@@ -17,7 +17,7 @@ enum AppRoute: Hashable {
     case eventSuggestion(vibe: String)
     case pickYourVibe
     case mixedSuggestion
-    case compass(MapItem)
+    case compass(Place)
     case editProfile
     case help
 }
@@ -27,12 +27,12 @@ enum AppRoute: Hashable {
 struct RootContainerView: View {
 
     // ── Navigation & Flow State ───────────────────────────────────────────────
-    @State private var selectedTab: AppTab             = .explore
-    @State private var navigationPath                  = NavigationPath()
+    @State private var selectedTab: AppTab          = .explore
+    @State private var navigationPath               = NavigationPath()
     // Drives fullScreenCover via item: — avoids the isPresented timing bug.
-    @State private var compassPresentation: MapItem?   = nil
+    @State private var compassPresentation: Place?  = nil
     // Tracks the currently visible pushed route for conditional UI (e.g. ad banner).
-    @State private var activeRoute: AppRoute?          = nil
+    @State private var activeRoute: AppRoute?       = nil
 
     private var shouldHideAdBanner: Bool {
         if selectedTab == .profile { return true }
@@ -109,8 +109,14 @@ struct RootContainerView: View {
         case .saved:
             comingSoonPlaceholder(label: "Saved")
         case .map:
-            MapTabView(onLetsGo: { place in
-                compassPresentation = place
+            MapTabView(onLetsGo: { mapItem in
+                compassPresentation = Place(
+                    id:               mapItem.id.uuidString,
+                    name:             mapItem.name,
+                    formattedAddress: nil,
+                    coordinate:       mapItem.coordinate,
+                    rating:           mapItem.rating
+                )
             })
         case .profile:
             ProfileView(
@@ -125,11 +131,13 @@ struct RootContainerView: View {
     @ViewBuilder
     private func destinationView(for route: AppRoute) -> some View {
         switch route {
-        case .barSuggestion(let vibe):
-            BarSuggestionView(
-                initialPlace: MapItem.mock(category: .bar, vibe: vibe ?? "Any"),
+        case .barSuggestion:
+            SuggestionView(
                 onLetsGo: { place in
                     compassPresentation = place
+                },
+                onNotFeelingIt: {
+                    navigationPath.removeLast()
                 }
             )
         case .pickYourVibe:
@@ -139,10 +147,12 @@ struct RootContainerView: View {
                 }
             )
         case .eventSuggestion(let vibe):
-            BarSuggestionView(
-                initialPlace: MapItem.mock(category: .event, vibe: vibe),
+            SuggestionView(
                 onLetsGo: { place in
                     compassPresentation = place
+                },
+                onNotFeelingIt: {
+                    navigationPath.removeLast()
                 }
             )
             .onAppear    { activeRoute = .eventSuggestion(vibe: vibe) }
@@ -150,12 +160,19 @@ struct RootContainerView: View {
         case .mixedSuggestion:
             MixedSuggestionView(
                 onSelectPlace: { place in
-                    compassPresentation = place
+                    compassPresentation = Place(
+                        id:               place.id.uuidString,
+                        name:             place.name,
+                        formattedAddress: nil,
+                        coordinate:       place.coordinate,
+                        rating:           place.rating
+                    )
                 }
             )
-        case .compass:
-            // Compass is presented via fullScreenCover, not as a pushed destination.
-            // This case exists for routing centralization — future phases may push it.
+        case .compass(let place):
+            // Compass is presented via fullScreenCover(item:), not as a pushed destination.
+            // The associated Place is available here for future deep-link or push use.
+            let _ = place
             EmptyView()
         case .editProfile:
             EditProfileView(onBack: { navigationPath.removeLast() })

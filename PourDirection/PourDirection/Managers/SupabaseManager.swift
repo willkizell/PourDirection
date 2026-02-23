@@ -6,13 +6,7 @@
 //  Responsibilities:
 //    - Initialize the SupabaseClient once using Config constants
 //    - Expose a generic invokeFunction() for calling Edge Functions
-//    - Provide a testConnection() stub for verifying client setup
-//
-//  Usage:
-//    let result: MyResponse = try await SupabaseManager.shared.invokeFunction(
-//        name: "my-function",
-//        body: MyRequest(foo: "bar")
-//    )
+//    - Provide typed fetch methods for each deployed Edge Function
 //
 
 import Foundation
@@ -32,47 +26,57 @@ final class SupabaseManager {
 
     private init() {
         guard let url = URL(string: Config.supabaseURL) else {
-            fatalError("SupabaseManager: invalid supabaseURL in Config.swift — check your project URL.")
+            fatalError("SupabaseManager: invalid supabaseURL in Config.swift – check your project URL.")
         }
+
         client = SupabaseClient(
             supabaseURL: url,
             supabaseKey: Config.supabaseAnonKey
         )
     }
 
-    // MARK: - Edge Function Invocation
+    // MARK: - Generic Edge Function Invocation
 
-    /// Calls a Supabase Edge Function by name, encoding `body` as JSON and decoding the
-    /// response into `T`. Throws on network failure, non-2xx status, or decode errors.
-    ///
-    /// - Parameters:
-    ///   - name: The deployed Edge Function name (e.g. `"suggest-places"`).
-    ///   - body: An `Encodable` payload sent as the JSON request body.
-    /// - Returns: A `Decodable` value of type `T` decoded from the function response.
     func invokeFunction<T: Decodable>(
         name: String,
         body: some Encodable
     ) async throws -> T {
-        let data: Data = try await client.functions.invoke(
-            name,
-            options: FunctionInvokeOptions(body: body)
-        )
+        // Let the Supabase SDK decode the response directly into T.
+        // Decoding through Data first fails because Data expects a base64 string
+        // in JSON, but Edge Functions return JSON objects.
         do {
-            return try JSONDecoder().decode(T.self, from: data)
-        } catch {
+            return try await client.functions.invoke(
+                name,
+                options: FunctionInvokeOptions(body: body)
+            )
+        } catch let error as DecodingError {
             throw SupabaseManagerError.decodingFailed(
                 function: name,
                 underlying: error,
-                rawResponse: String(data: data, encoding: .utf8)
+                rawResponse: nil
             )
         }
     }
 
+    // MARK: - Nearby Places
+
+    private struct NearbyPlacesPayload: Encodable {
+        let lat: Double
+        let lng: Double
+    }
+
+    /// Fetches nearby bars from the "nearby-places" Edge Function.
+    /// Returns decoded `Place` values ready for display.
+    func fetchNearbyPlaces(lat: Double, lng: Double) async throws -> [Place] {
+        let response: NearbyPlacesResponse = try await invokeFunction(
+            name: "nearby-places",
+            body: NearbyPlacesPayload(lat: lat, lng: lng)
+        )
+        return response.places.map { Place(from: $0) }
+    }
+
     // MARK: - Connection Test
 
-    /// Temporary test stub — calls a "health-check" Edge Function that does not yet exist.
-    /// Expected output:  a FunctionsError (404 / not found) confirming the client is wired
-    /// up correctly and can reach Supabase. Remove or replace once real functions are deployed.
     func testConnection() async {
         struct HealthPayload: Encodable { let ping = "test" }
         struct HealthResponse: Decodable { let status: String }

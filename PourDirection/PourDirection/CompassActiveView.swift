@@ -15,7 +15,7 @@ import CoreLocation
 
 struct CompassActiveView: View {
 
-    let place: MapItem
+    let place: Place
     let onOpenInMaps: () -> Void
     @Binding var selectedTab: AppTab
     let onDismiss: () -> Void
@@ -41,7 +41,7 @@ struct CompassActiveView: View {
     /// Bearing from current location to target (degrees from north).
     private var targetBearing: Double? {
         guard let loc = locationManager.currentLocation else { return nil }
-        return MapItem.bearing(from: loc.coordinate, to: place.coordinate)
+        return Place.bearing(from: loc.coordinate, to: place.coordinate)
     }
 
     /// Angle difference between device heading and target bearing (0-180).
@@ -119,7 +119,7 @@ struct CompassActiveView: View {
                     }
                     Spacer()
                     // Distance badge
-                    Text(MapItem.formatDistance(place.distance(from: locationManager.currentLocation)))
+                    Text(Place.formatDistance(place.distance(from: locationManager.currentLocation)))
                         .font(AppTypography.bodyMedium)
                         .foregroundColor(AppColors.primary)
                         .padding(.horizontal, AppSpacing.sm)
@@ -337,7 +337,13 @@ struct CompassActiveView: View {
 
 #Preview {
     CompassActiveView(
-        place: MapItem.mock(category: .bar, vibe: "Lively"),
+        place: Place(
+            id: "preview",
+            name: "The Local Tap Room",
+            formattedAddress: "123 Main St, Vancouver, BC",
+            coordinate: CLLocationCoordinate2D(latitude: 49.2827, longitude: -123.1207),
+            rating: 4.5
+        ),
         onOpenInMaps: {},
         selectedTab: .constant(.map),
         onDismiss: {}
