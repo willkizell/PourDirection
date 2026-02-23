@@ -1,0 +1,9 @@
+# Secrets
+Config.swift
+
+# Xcode junk
+.DS_Store
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace

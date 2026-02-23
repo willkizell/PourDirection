@@ -44,6 +44,10 @@ struct PourDirectionApp: App {
                         mainOpacity = 1.0
                     }
                 }
+
+                // ── Supabase connection test ─────────────────────────────────
+                // Remove once real Edge Functions are deployed.
+                Task { await SupabaseManager.shared.testConnection() }
             }
         }
     }
