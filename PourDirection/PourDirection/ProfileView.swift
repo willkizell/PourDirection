@@ -9,17 +9,6 @@
 
 import SwiftUI
 
-// MARK: - Mock User Model
-
-struct MockUser {
-    var fullName: String    = "William Kizell"
-    var email: String       = "wkizell@gmail.com"
-    var gender: String      = "Male"
-    var birthday: String    = "09-22-2003"
-    var defaultCity: String = "Vancouver, BC"
-    var avatarSystemName: String = "person.crop.circle.fill"
-}
-
 // MARK: - Profile View
 
 struct ProfileView: View {

@@ -17,109 +17,9 @@ enum AppRoute: Hashable {
     case eventSuggestion(vibe: String)
     case pickYourVibe
     case mixedSuggestion
+    case compass(MapItem)
     case editProfile
     case help
-}
-
-// MARK: - Mock Model
-// Temporary stand-in for a real venue model.
-// Replace with a proper domain model when backend is introduced.
-
-struct MockPlace: Identifiable {
-    let id = UUID()
-    let name: String
-    let category: String
-    let vibe: String
-    let distance: String
-    let isOpen: Bool
-    let rating: Double
-    let closingTime: String
-    let reviewCount: Int
-    // Event-specific (nil for bars/clubs/stores)
-    let eventTime: String?
-    let venue: String?
-    let priceRange: String?
-    let isTonight: Bool
-
-    static func generate(category: String, vibe: String) -> MockPlace {
-        let distances    = ["0.2 mi", "0.4 mi", "0.6 mi", "0.9 mi", "1.2 mi", "1.5 mi"]
-        let ratings      = [3.8, 4.0, 4.1, 4.2, 4.3, 4.5, 4.7, 4.8]
-        let reviewCounts = [5, 12, 28, 47, 89, 134, 203, 389]
-
-        if category == "Event" {
-            let chillNames     = ["Live Jazz Night", "Acoustic Sessions", "Wine & Canvas", "Art Gallery Opening"]
-            let energeticNames = ["Rooftop Sessions", "DJ Battle Night", "The Midnight Live", "Electronic Night"]
-            let otherNames     = ["Comedy Open Mic", "Karaoke Night", "Trivia Night", "Stand-Up Showcase"]
-
-            let pool: [String] = {
-                switch vibe {
-                case "Chill":     return chillNames
-                case "Energetic": return energeticNames
-                default:          return otherNames
-                }
-            }()
-
-            let venues       = ["The Cellar Jazz Club", "Rooftop at The Ace", "Underground Lounge",
-                                "The Grand Ballroom", "Velvet Room", "District Stage"]
-            let tonightTimes = ["Tonight at 7:00 PM", "Tonight at 9:00 PM", "Tonight at 10:30 PM"]
-            let upcomingTimes = ["Sat at 8:00 PM", "Sun at 7:30 PM", "Fri at 9:00 PM"]
-            let prices       = ["$10–$20", "$15–$30", "$20–$40", "Free", "$25–$50"]
-
-            let eventTime = (tonightTimes + upcomingTimes).randomElement()!
-            let isTonight = eventTime.hasPrefix("Tonight")
-
-            return MockPlace(
-                name:        pool.randomElement()!,
-                category:    "Event",
-                vibe:        vibe,
-                distance:    distances.randomElement()!,
-                isOpen:      true,
-                rating:      ratings.randomElement()!,
-                closingTime: eventTime,
-                reviewCount: reviewCounts.randomElement()!,
-                eventTime:   eventTime,
-                venue:       venues.randomElement()!,
-                priceRange:  prices.randomElement()!,
-                isTonight:   isTonight
-            )
-        }
-
-        let barNames   = ["The Rusty Anchor", "Cellar No. 7", "The Copper Still", "Harbor Social"]
-        let clubNames  = ["Neon Serenade", "Echo Lounge", "Apex Club", "Drift"]
-        let storeNames = ["The Bottle Shop", "Reserve Liquors", "Corner Stock", "The Pour House"]
-        let eventNames = ["Live Jazz Night", "Rooftop Sessions", "The Underground", "Velvet Social"]
-
-        let pool: [String] = {
-            switch category {
-            case "Club":         return clubNames
-            case "Liquor Store": return storeNames
-            case "Event":        return eventNames
-            default:             return barNames
-            }
-        }()
-
-        let closingTimes = ["12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM"]
-
-        return MockPlace(
-            name:        pool.randomElement()!,
-            category:    category,
-            vibe:        vibe,
-            distance:    distances.randomElement()!,
-            isOpen:      Bool.random(),
-            rating:      ratings.randomElement()!,
-            closingTime: closingTimes.randomElement()!,
-            reviewCount: reviewCounts.randomElement()!,
-            eventTime:   nil,
-            venue:       nil,
-            priceRange:  nil,
-            isTonight:   false
-        )
-    }
-
-    // Returns a fresh random place with the same category/vibe — used for "Not Feeling It"
-    func regenerated() -> MockPlace {
-        MockPlace.generate(category: category, vibe: vibe)
-    }
 }
 
 // MARK: - Root Container View
@@ -129,15 +29,14 @@ struct RootContainerView: View {
     // ── Navigation & Flow State ───────────────────────────────────────────────
     @State private var selectedTab: AppTab             = .explore
     @State private var navigationPath                  = NavigationPath()
-    @State private var isCompassActive: Bool           = false
-    @State private var currentTargetPlace: MockPlace?  = nil
     // Drives fullScreenCover via item: — avoids the isPresented timing bug.
-    @State private var compassPresentation: MockPlace? = nil
+    @State private var compassPresentation: MapItem?   = nil
     // Tracks the currently visible pushed route for conditional UI (e.g. ad banner).
     @State private var activeRoute: AppRoute?          = nil
 
     private var shouldHideAdBanner: Bool {
         if selectedTab == .profile { return true }
+        if selectedTab == .map { return true }
         if case .eventSuggestion = activeRoute { return true }
         if case .editProfile = activeRoute { return true }
         if case .help = activeRoute { return true }
@@ -182,11 +81,9 @@ struct RootContainerView: View {
             CompassActiveView(
                 place:        place,
                 onOpenInMaps: { /* Maps integration — future phase */ },
-                onChangeTarget: {
+                selectedTab:  $selectedTab,
+                onDismiss: {
                     compassPresentation = nil
-                    isCompassActive     = false
-                    currentTargetPlace  = nil
-                    navigationPath      = NavigationPath()
                 }
             )
         }
@@ -212,7 +109,9 @@ struct RootContainerView: View {
         case .saved:
             comingSoonPlaceholder(label: "Saved")
         case .map:
-            comingSoonPlaceholder(label: "Map")
+            MapTabView(onLetsGo: { place in
+                compassPresentation = place
+            })
         case .profile:
             ProfileView(
                 onEditProfile: { navigationPath.append(AppRoute.editProfile) },
@@ -228,10 +127,8 @@ struct RootContainerView: View {
         switch route {
         case .barSuggestion(let vibe):
             BarSuggestionView(
-                initialPlace: MockPlace.generate(category: "Bar", vibe: vibe ?? "Any"),
+                initialPlace: MapItem.mock(category: .bar, vibe: vibe ?? "Any"),
                 onLetsGo: { place in
-                    currentTargetPlace  = place
-                    isCompassActive     = true
                     compassPresentation = place
                 }
             )
@@ -243,10 +140,8 @@ struct RootContainerView: View {
             )
         case .eventSuggestion(let vibe):
             BarSuggestionView(
-                initialPlace: MockPlace.generate(category: "Event", vibe: vibe),
+                initialPlace: MapItem.mock(category: .event, vibe: vibe),
                 onLetsGo: { place in
-                    currentTargetPlace  = place
-                    isCompassActive     = true
                     compassPresentation = place
                 }
             )
@@ -255,11 +150,13 @@ struct RootContainerView: View {
         case .mixedSuggestion:
             MixedSuggestionView(
                 onSelectPlace: { place in
-                    currentTargetPlace  = place
-                    isCompassActive     = true
                     compassPresentation = place
                 }
             )
+        case .compass:
+            // Compass is presented via fullScreenCover, not as a pushed destination.
+            // This case exists for routing centralization — future phases may push it.
+            EmptyView()
         case .editProfile:
             EditProfileView(onBack: { navigationPath.removeLast() })
         case .help:
@@ -285,8 +182,12 @@ struct RootContainerView: View {
     // ── Compass Button Logic ─────────────────────────────────────────────────
 
     private func handleCompassTap() {
-        if isCompassActive, let place = currentTargetPlace {
-            compassPresentation = place
+        if let place = compassPresentation {
+            // Re-open existing compass target
+            compassPresentation = nil
+            DispatchQueue.main.async {
+                compassPresentation = place
+            }
         } else {
             navigationPath.append(AppRoute.barSuggestion(vibe: nil))
         }
@@ -295,4 +196,5 @@ struct RootContainerView: View {
 
 #Preview {
     RootContainerView()
+        .environment(LocationManager())
 }

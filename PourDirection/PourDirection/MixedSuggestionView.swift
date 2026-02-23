@@ -12,14 +12,16 @@ import SwiftUI
 
 struct MixedSuggestionView: View {
 
-    let onSelectPlace: (MockPlace) -> Void
+    let onSelectPlace: (MapItem) -> Void
 
-    @State private var places: [MockPlace] = [
-        MockPlace.generate(category: "Bar",          vibe: "Chill"),
-        MockPlace.generate(category: "Club",         vibe: "Energetic"),
-        MockPlace.generate(category: "Event",        vibe: "Chill"),
-        MockPlace.generate(category: "Bar",          vibe: "Energetic"),
-        MockPlace.generate(category: "Liquor Store", vibe: "Chill"),
+    @Environment(LocationManager.self) private var locationManager
+
+    @State private var places: [MapItem] = [
+        MapItem.mock(category: .bar,         vibe: "Chill"),
+        MapItem.mock(category: .club,        vibe: "Energetic"),
+        MapItem.mock(category: .event,       vibe: "Chill"),
+        MapItem.mock(category: .bar,         vibe: "Energetic"),
+        MapItem.mock(category: .liquorStore, vibe: "Chill"),
     ]
 
     var body: some View {
@@ -52,7 +54,7 @@ struct MixedSuggestionView: View {
                                                 .font(AppTypography.header)
                                                 .foregroundColor(AppColors.secondary)
                                             Spacer()
-                                            Text(place.category)
+                                            Text(place.displayCategory)
                                                 .font(.system(size: 11, weight: .medium))
                                                 .foregroundColor(AppColors.primary)
                                                 .padding(.horizontal, AppSpacing.xs)
@@ -67,7 +69,7 @@ struct MixedSuggestionView: View {
                                                 Image(systemName: "star.fill")
                                                     .font(.system(size: 11))
                                                     .foregroundColor(AppColors.primary)
-                                                Text(String(format: "%.1f", place.rating))
+                                                Text(String(format: "%.1f", place.rating ?? 0))
                                                     .font(AppTypography.caption)
                                                     .foregroundColor(AppColors.secondary.opacity(0.7))
                                             }
@@ -77,23 +79,26 @@ struct MixedSuggestionView: View {
                                                 .foregroundColor(AppColors.secondary.opacity(0.25))
 
                                             // Distance
-                                            Label(place.distance, systemImage: "location.fill")
-                                                .font(AppTypography.caption)
-                                                .foregroundColor(AppColors.secondary.opacity(0.6))
+                                            Label(
+                                                MapItem.formatDistance(place.distance(from: locationManager.currentLocation)),
+                                                systemImage: "location.fill"
+                                            )
+                                            .font(AppTypography.caption)
+                                            .foregroundColor(AppColors.secondary.opacity(0.6))
 
                                             Spacer()
 
                                             // Open status
                                             HStack(spacing: AppSpacing.xxs) {
                                                 Circle()
-                                                    .fill(place.isOpen
+                                                    .fill((place.isOpen ?? false)
                                                           ? AppColors.primary
                                                           : AppColors.secondary.opacity(0.3))
                                                     .frame(width: 6, height: 6)
-                                                Text(place.isOpen ? "Open" : "Closed")
+                                                Text((place.isOpen ?? false) ? "Open" : "Closed")
                                                     .font(AppTypography.caption)
                                                     .foregroundColor(
-                                                        place.isOpen
+                                                        (place.isOpen ?? false)
                                                             ? AppColors.primary
                                                             : AppColors.secondary.opacity(0.4)
                                                     )
@@ -121,4 +126,5 @@ struct MixedSuggestionView: View {
     }
     .ignoresSafeArea(edges: .bottom)
     .preferredColorScheme(.dark)
+    .environment(LocationManager())
 }

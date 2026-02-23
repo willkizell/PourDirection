@@ -11,11 +11,13 @@ import SwiftUI
 
 struct BarSuggestionView: View {
 
-    @State private var place: MockPlace
+    @State private var place: MapItem
     @State private var isSaved: Bool = false
-    let onLetsGo: (MockPlace) -> Void
+    let onLetsGo: (MapItem) -> Void
 
-    init(initialPlace: MockPlace, onLetsGo: @escaping (MockPlace) -> Void) {
+    @Environment(LocationManager.self) private var locationManager
+
+    init(initialPlace: MapItem, onLetsGo: @escaping (MapItem) -> Void) {
         self._place = State(initialValue: initialPlace)
         self.onLetsGo = onLetsGo
     }
@@ -40,12 +42,12 @@ struct BarSuggestionView: View {
                             Circle()
                                 .fill(AppColors.primary)
                                 .frame(width: 6, height: 6)
-                            Text(place.category == "Event"
+                            Text(place.category == .event
                                  ? (place.isTonight ? "Tonight" : "Upcoming")
-                                 : (place.isOpen ? "Open now" : "Closed"))
+                                 : ((place.isOpen ?? false) ? "Open now" : "Closed"))
                                 .font(AppTypography.caption)
                                 .foregroundColor(
-                                    place.isOpen
+                                    (place.isOpen ?? false)
                                         ? AppColors.primary
                                         : AppColors.secondary.opacity(0.5)
                                 )
@@ -111,18 +113,18 @@ struct BarSuggestionView: View {
                             // Star rating + review count
                             HStack(spacing: 3) {
                                 ForEach(1...5, id: \.self) { i in
-                                    Image(systemName: Double(i) <= place.rating
+                                    Image(systemName: Double(i) <= (place.rating ?? 0)
                                           ? "star.fill" : "star")
                                         .font(.system(size: 12))
                                         .foregroundColor(AppColors.primary)
                                 }
-                                Text("(\(place.reviewCount))")
+                                Text("(\(place.reviewCount ?? 0))")
                                     .font(AppTypography.caption)
                                     .foregroundColor(AppColors.secondary.opacity(0.5))
                             }
 
                             // Event fields vs bar fields
-                            if place.category == "Event" {
+                            if place.category == .event {
                                 // Time + price on one row
                                 HStack {
                                     if let t = place.eventTime {
@@ -157,11 +159,14 @@ struct BarSuggestionView: View {
                                 .padding(.top, AppSpacing.xs)
 
                             } else {
-                                Label(place.distance + " away", systemImage: "location.fill")
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(AppColors.secondary.opacity(0.6))
+                                Label(
+                                    MapItem.formatDistance(place.distance(from: locationManager.currentLocation)) + " away",
+                                    systemImage: "location.fill"
+                                )
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.secondary.opacity(0.6))
 
-                                Label("Closes at \(place.closingTime)", systemImage: "clock")
+                                Label("Closes at \(place.closingTime ?? "N/A")", systemImage: "clock")
                                     .font(AppTypography.caption)
                                     .foregroundColor(AppColors.secondary.opacity(0.6))
                             }
@@ -203,11 +208,12 @@ struct BarSuggestionView: View {
 #Preview {
     ZStack(alignment: .bottom) {
         BarSuggestionView(
-            initialPlace: MockPlace.generate(category: "Bar", vibe: "Chill"),
+            initialPlace: MapItem.mock(category: .bar, vibe: "Chill"),
             onLetsGo: { _ in }
         )
         CustomTabBar(selectedTab: .constant(.explore))
     }
     .ignoresSafeArea(edges: .bottom)
     .preferredColorScheme(.dark)
+    .environment(LocationManager())
 }

@@ -4,14 +4,14 @@
 //
 //  3-step full-screen modal for selecting category and vibe before finding a spot.
 //  Self-contained: manages its own step state and dismisses itself on confirm.
-//  Calls onConfirm(MockPlace) before dismissing so the parent can update its state first.
+//  Calls onConfirm(MapItem) before dismissing so the parent can update its state first.
 //
 
 import SwiftUI
 
 struct PickVibeFlow: View {
 
-    let onConfirm: (MockPlace) -> Void
+    let onConfirm: (MapItem) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
@@ -201,8 +201,8 @@ struct PickVibeFlow: View {
             // Actions
             VStack(spacing: AppSpacing.md) {
                 PrimaryButton(title: "Find My Spot") {
-                    let place = MockPlace.generate(
-                        category: selectedCategory,
+                    let place = MapItem.mock(
+                        category: PlaceCategory(rawValue: selectedCategory) ?? .bar,
                         vibe: selectedVibe
                     )
                     onConfirm(place)

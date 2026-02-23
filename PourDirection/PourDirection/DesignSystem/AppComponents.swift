@@ -245,11 +245,13 @@ private struct TabBarItem: View {
 ///         }
 ///     }
 struct CustomTabBar: View {
+    static let height: CGFloat = 52
+
     @Binding var selectedTab: AppTab
     var onCompassTap: () -> Void = {}
     var onTabTap: (AppTab) -> Void = { _ in }
 
-    private let barHeight: CGFloat    = 52
+    private let barHeight: CGFloat    = CustomTabBar.height
     private let compassCircle: CGFloat = 44
 
     var body: some View {

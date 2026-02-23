@@ -11,9 +11,11 @@ import SwiftUI
 
 struct SuggestionView: View {
 
-    let place: MockPlace
+    let place: MapItem
     let onLetsGo: () -> Void
     let onNotFeelingIt: () -> Void
+
+    @Environment(LocationManager.self) private var locationManager
 
     var body: some View {
         ZStack {
@@ -29,7 +31,7 @@ struct SuggestionView: View {
                      + Text("it.")
                         .foregroundColor(AppColors.primary))
                         .font(AppTypography.titleSmall)
-                    Text("\(place.category) · \(place.vibe)")
+                    Text("\(place.displayCategory) · \(place.vibe)")
                         .font(AppTypography.caption)
                         .foregroundColor(AppColors.secondary.opacity(0.45))
                 }
@@ -50,9 +52,12 @@ struct SuggestionView: View {
                         // Meta row
                         HStack(spacing: AppSpacing.md) {
                             // Distance
-                            Label(place.distance, systemImage: "location.fill")
-                                .font(AppTypography.caption)
-                                .foregroundColor(AppColors.secondary.opacity(0.6))
+                            Label(
+                                MapItem.formatDistance(place.distance(from: locationManager.currentLocation)),
+                                systemImage: "location.fill"
+                            )
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppColors.secondary.opacity(0.6))
 
                             // Divider dot
                             Text("·")
@@ -62,12 +67,12 @@ struct SuggestionView: View {
                             // Open status
                             HStack(spacing: AppSpacing.xxs) {
                                 Circle()
-                                    .fill(place.isOpen ? AppColors.primary : AppColors.secondary.opacity(0.3))
+                                    .fill((place.isOpen ?? false) ? AppColors.primary : AppColors.secondary.opacity(0.3))
                                     .frame(width: 6, height: 6)
-                                Text(place.isOpen ? "Open now" : "Closed")
+                                Text((place.isOpen ?? false) ? "Open now" : "Closed")
                                     .font(AppTypography.caption)
                                     .foregroundColor(
-                                        place.isOpen
+                                        (place.isOpen ?? false)
                                             ? AppColors.primary
                                             : AppColors.secondary.opacity(0.4)
                                     )
@@ -96,7 +101,7 @@ struct SuggestionView: View {
 #Preview {
     ZStack(alignment: .bottom) {
         SuggestionView(
-            place: MockPlace.generate(category: "Bar", vibe: "Chill"),
+            place: MapItem.mock(category: .bar, vibe: "Chill"),
             onLetsGo: {},
             onNotFeelingIt: {}
         )
@@ -104,4 +109,5 @@ struct SuggestionView: View {
     }
     .ignoresSafeArea(edges: .bottom)
     .preferredColorScheme(.dark)
+    .environment(LocationManager())
 }

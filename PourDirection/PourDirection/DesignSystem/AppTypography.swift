@@ -119,6 +119,10 @@ struct AppTypography {
     /// Poppins Medium / 16pt
     static let bodyMedium  = Font.poppins(.medium,   size: 16)
 
+    /// Small body — secondary actions / muted buttons
+    /// Poppins Medium / 14pt
+    static let bodySmall   = Font.poppins(.medium,   size: 14)
+
     /// Caption — metadata, secondary labels, timestamps
     /// Poppins Regular / 12pt
     static let caption     = Font.poppins(.regular,  size: 12)

@@ -13,6 +13,7 @@ struct PourDirectionApp: App {
 
     @State private var showSplash  = true
     @State private var mainOpacity = 0.0
+    @State private var locationManager = LocationManager()
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +25,7 @@ struct PourDirectionApp: App {
 
                 // Main app shell — fades in after splash is clear
                 RootContainerView()
+                    .environment(locationManager)
                     .opacity(mainOpacity)
 
                 // Splash — fades out first
