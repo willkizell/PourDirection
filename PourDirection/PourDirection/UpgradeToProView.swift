@@ -41,7 +41,6 @@ struct UpgradeToProView: View {
                 // ── Benefits ─────────────────────────────────────────────
                 VStack(alignment: .leading, spacing: AppSpacing.md) {
                     benefitRow("No ads")
-                    benefitRow("Unlimited suggestions")
                 }
                 .padding(.horizontal, AppSpacing.xl)
                 .frame(maxWidth: .infinity, alignment: .leading)

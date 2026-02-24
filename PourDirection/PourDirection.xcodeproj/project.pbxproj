@@ -13,6 +13,7 @@
 		63F34F682F4C2FD900328FA6 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F672F4C2FD900328FA6 /* Realtime */; };
 		63F34F6A2F4C2FD900328FA6 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F692F4C2FD900328FA6 /* Storage */; };
 		63F34F6D2F4C306A00328FA6 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F6C2F4C306A00328FA6 /* Supabase */; };
+		63F34FE62F4D954E00328FA6 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34FE52F4D954E00328FA6 /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +52,7 @@
 				63F34F622F4C2FD900328FA6 /* Auth in Frameworks */,
 				63F34F6A2F4C2FD900328FA6 /* Storage in Frameworks */,
 				63F34F682F4C2FD900328FA6 /* Realtime in Frameworks */,
+				63F34FE62F4D954E00328FA6 /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -107,6 +109,7 @@
 				63F34F672F4C2FD900328FA6 /* Realtime */,
 				63F34F692F4C2FD900328FA6 /* Storage */,
 				63F34F6C2F4C306A00328FA6 /* Supabase */,
+				63F34FE52F4D954E00328FA6 /* GoogleMobileAds */,
 			);
 			productName = PourDirection;
 			productReference = 63F34EEA2F4AD44900328FA6 /* PourDirection.app */;
@@ -138,6 +141,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				63F34F602F4C2FD900328FA6 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				63F34FE42F4D954E00328FA6 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 63F34EEB2F4AD44900328FA6 /* Products */;
@@ -391,6 +395,14 @@
 				minimumVersion = 2.5.1;
 			};
 		};
+		63F34FE42F4D954E00328FA6 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -423,6 +435,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 63F34F602F4C2FD900328FA6 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		63F34FE52F4D954E00328FA6 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 63F34FE42F4D954E00328FA6 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

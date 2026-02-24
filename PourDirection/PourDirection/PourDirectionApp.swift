@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+#if canImport(GoogleMobileAds)
+import GoogleMobileAds
+#endif
 
 @main
 struct PourDirectionApp: App {
@@ -44,6 +47,14 @@ struct PourDirectionApp: App {
                         mainOpacity = 1.0
                     }
                 }
+
+                #if canImport(GoogleMobileAds)
+                MobileAds.shared.start { _ in }
+                // Register this device for test ads (update if reinstalling the app).
+                MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
+                    "1b3dc40f450db15529430fa5a35ef648"
+                ]
+                #endif
 
                 // ── Supabase connection test ─────────────────────────────────
                 // Remove once real Edge Functions are deployed.

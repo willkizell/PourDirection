@@ -7,6 +7,9 @@
 //
 
 import SwiftUI
+#if canImport(GoogleMobileAds)
+import GoogleMobileAds
+#endif
 import UIKit
 
 // MARK: - Swipe-Back Gesture Support
@@ -171,12 +174,41 @@ struct CardView<Content: View>: View {
     }
 }
 
-// MARK: - Ad Banner Placeholder View
+// MARK: - Ad Banner View
 
-/// 50pt tall placeholder used on screens that will carry ad inventory.
-/// Replace with the real AdMob / ad SDK view when integrating advertising.
+/// 50pt tall banner slot. Shows AdMob when available, otherwise a placeholder.
 struct AdBannerPlaceholderView: View {
+    let adUnitID: String
+    @State private var isLoaded: Bool = false
+
+    init(adUnitID: String = "ca-app-pub-6036298682734506/7829757936") {
+        self.adUnitID = adUnitID
+    }
+
+    private var effectiveAdUnitID: String {
+        #if DEBUG
+        // Guaranteed-fill test banner from Google for development.
+        return "ca-app-pub-3940256099942544/2435281174"
+        #else
+        return adUnitID
+        #endif
+    }
+
     var body: some View {
+        #if canImport(GoogleMobileAds)
+        ZStack {
+            AppColors.adPlaceholder
+            if !isLoaded {
+                Text("Ad Banner")
+                    .font(AppTypography.caption)
+                    .foregroundColor(AppColors.secondary.opacity(0.35))
+            }
+            AdMobBannerView(adUnitID: effectiveAdUnitID, isLoaded: $isLoaded)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
+        .cornerRadius(AppRadius.sm)
+        #else
         ZStack {
             AppColors.adPlaceholder
             Text("Ad Banner")
@@ -186,8 +218,81 @@ struct AdBannerPlaceholderView: View {
         .frame(maxWidth: .infinity)
         .frame(height: 50)
         .cornerRadius(AppRadius.sm)
+        #endif
     }
 }
+
+#if canImport(GoogleMobileAds)
+private struct AdMobBannerView: UIViewRepresentable {
+    let adUnitID: String
+    @Binding var isLoaded: Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(isLoaded: $isLoaded)
+    }
+
+    func makeUIView(context: Context) -> BannerView {
+        let banner = BannerView(adSize: AdSizeBanner)
+        banner.adUnitID = adUnitID
+        banner.delegate = context.coordinator
+        banner.rootViewController = AdMobBannerView.rootViewController()
+        context.coordinator.loadIfNeeded(banner)
+        return banner
+    }
+
+    func updateUIView(_ uiView: BannerView, context: Context) {
+        if uiView.rootViewController == nil {
+            uiView.rootViewController = AdMobBannerView.rootViewController()
+        }
+        context.coordinator.loadIfNeeded(uiView)
+    }
+
+    private static func rootViewController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let keyWindow = scenes.flatMap { $0.windows }.first { $0.isKeyWindow }
+        if let root = keyWindow?.rootViewController {
+            return root
+        }
+        return scenes.flatMap { $0.windows }.first?.rootViewController
+    }
+
+    final class Coordinator: NSObject, BannerViewDelegate {
+        @Binding var isLoaded: Bool
+        var didLoad: Bool = false
+
+        init(isLoaded: Binding<Bool>) {
+            self._isLoaded = isLoaded
+        }
+
+        func loadIfNeeded(_ banner: BannerView) {
+            guard !didLoad else { return }
+            if banner.rootViewController == nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak banner, weak self] in
+                    guard let banner, let self else { return }
+                    if banner.rootViewController == nil {
+                        banner.rootViewController = AdMobBannerView.rootViewController()
+                    }
+                    self.loadIfNeeded(banner)
+                }
+                return
+            }
+            print("[AdMob] loading banner...")
+            banner.load(Request())
+            didLoad = true
+        }
+
+        func bannerViewDidReceiveAd(_ bannerView: BannerView) {
+            print("[AdMob] banner loaded")
+            isLoaded = true
+        }
+
+        func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
+            print("[AdMob] banner failed: \(error.localizedDescription)")
+            isLoaded = false
+        }
+    }
+}
+#endif
 
 // MARK: - App Logo View
 
