@@ -74,7 +74,7 @@ struct AppColors {
     static let cardSurface     = Color(hex: "0A0F0F")
 
     /// Ad banner placeholder — subtle dark surface to indicate ad slot
-    static let adPlaceholder   = Color(hex: "1C1C1E")
+    static let adPlaceholder   = Color(hex: "000000")
 
     /// Divider — subtle separator between UI sections
     static let divider         = Color(hex: "2A2A2A")

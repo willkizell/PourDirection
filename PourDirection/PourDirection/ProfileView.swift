@@ -2,21 +2,66 @@
 //  ProfileView.swift
 //  PourDirection
 //
-//  Profile screen — settings hub with Remove Ads upsell and Help.
-//  Navigation delegated to RootContainerView via closures.
+//  Settings hub. Toggles reflect real iOS permission state.
+//  Tapping a toggle when permission is undetermined → system dialog.
+//  Tapping when already determined → opens iOS Settings app.
+//  State refreshes on scenePhase .active so toggles update after returning from Settings.
 //
 
 import SwiftUI
+import UserNotifications
+import CoreLocation
 
 // MARK: - Profile View
 
 struct ProfileView: View {
 
-    @State private var notificationsEnabled = true
-    @State private var locationEnabled      = true
-    @State private var showUpgradeSheet     = false
+    @Environment(LocationManager.self) private var locationManager
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var notifStatus: UNAuthorizationStatus = .notDetermined
+    @State private var showUpgradeSheet = false
 
     let onHelp: () -> Void
+
+    // MARK: - Computed Bindings
+
+    private var notificationsBinding: Binding<Bool> {
+        Binding(
+            get: { notifStatus == .authorized },
+            set: { _ in
+                HapticManager.shared.light()
+                switch notifStatus {
+                case .notDetermined:
+                    UNUserNotificationCenter.current()
+                        .requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in
+                            DispatchQueue.main.async { checkNotificationStatus() }
+                        }
+                default:
+                    openSettings()
+                }
+            }
+        )
+    }
+
+    private var locationBinding: Binding<Bool> {
+        Binding(
+            get: {
+                locationManager.authorizationStatus == .authorizedWhenInUse ||
+                locationManager.authorizationStatus == .authorizedAlways
+            },
+            set: { _ in
+                HapticManager.shared.light()
+                switch locationManager.authorizationStatus {
+                case .notDetermined:
+                    locationManager.requestPermission()
+                default:
+                    openSettings()
+                }
+            }
+        )
+    }
+
+    // MARK: - Body
 
     var body: some View {
         ZStack {
@@ -41,27 +86,26 @@ struct ProfileView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
 
-                        // ── Preferences Section ───────────────────────────
+                        // ── Preferences ───────────────────────────────────
                         sectionHeader("Preferences")
 
                         SettingsToggleRow(
                             icon: "bell",
                             title: "Enable Notifications",
-                            isOn: $notificationsEnabled
+                            isOn: notificationsBinding
                         )
 
                         SettingsToggleRow(
                             icon: "location",
                             title: "Enable Location Services",
-                            isOn: $locationEnabled
+                            isOn: locationBinding
                         )
 
-                        // ── Actions ─────────────────────────────────────────
+                        // ── Actions ───────────────────────────────────────
                         VStack(spacing: 0) {
                             SettingsNavRow(icon: "crown", title: "Remove Ads") {
                                 showUpgradeSheet = true
                             }
-
                             SettingsNavRow(icon: "questionmark.circle", title: "Help", action: onHelp)
                         }
                         .padding(.top, AppSpacing.sm)
@@ -76,6 +120,29 @@ struct ProfileView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .onAppear {
+            checkNotificationStatus()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                checkNotificationStatus()
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func checkNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                notifStatus = settings.authorizationStatus
+            }
+        }
+    }
+
+    private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // ── Section Header ──────────────────────────────────────────────────
@@ -94,7 +161,7 @@ struct ProfileView: View {
 
 // MARK: - Settings Row Components
 
-/// Toggle row — icon + label + switch with haptic feedback
+/// Toggle row — icon + label + switch. Haptic handled by the binding setter.
 struct SettingsToggleRow: View {
     let icon: String
     let title: String
@@ -120,9 +187,6 @@ struct SettingsToggleRow: View {
         .cornerRadius(AppRadius.md)
         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
         .padding(.vertical, 2)
-        .onChange(of: isOn) { _ in
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
     }
 }
 
@@ -167,4 +231,5 @@ struct SettingsNavRow: View {
     }
     .ignoresSafeArea(edges: .bottom)
     .preferredColorScheme(.dark)
+    .environment(LocationManager())
 }

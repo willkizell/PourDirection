@@ -178,6 +178,7 @@ struct CardView<Content: View>: View {
 
 /// 50pt tall banner slot. Shows AdMob when available, otherwise a placeholder.
 struct AdBannerPlaceholderView: View {
+    @EnvironmentObject private var adsManager: AdsManager
     let adUnitID: String
     @State private var isLoaded: Bool = false
 
@@ -190,27 +191,33 @@ struct AdBannerPlaceholderView: View {
         // Guaranteed-fill test banner from Google for development.
         return "ca-app-pub-3940256099942544/2435281174"
         #else
-        return adUnitID
+        // Always use production ID in Release to prevent shipping test ads.
+        return "ca-app-pub-6036298682734506/7829757936"
         #endif
     }
 
     var body: some View {
+        if adsManager.isReady && !adsManager.adsEnabled {
+            EmptyView()
+        } else {
         #if canImport(GoogleMobileAds)
         ZStack {
-            AppColors.adPlaceholder
+            Color.black
             if !isLoaded {
                 Text("Ad Banner")
                     .font(AppTypography.caption)
                     .foregroundColor(AppColors.secondary.opacity(0.35))
             }
-            AdMobBannerView(adUnitID: effectiveAdUnitID, isLoaded: $isLoaded)
+            if adsManager.isReady {
+                AdMobBannerView(adUnitID: effectiveAdUnitID, isLoaded: $isLoaded)
+            }
         }
         .frame(maxWidth: .infinity)
         .frame(height: 50)
         .cornerRadius(AppRadius.sm)
         #else
         ZStack {
-            AppColors.adPlaceholder
+            Color.black
             Text("Ad Banner")
                 .font(AppTypography.caption)
                 .foregroundColor(AppColors.secondary.opacity(0.35))
@@ -219,6 +226,7 @@ struct AdBannerPlaceholderView: View {
         .frame(height: 50)
         .cornerRadius(AppRadius.sm)
         #endif
+        }
     }
 }
 
@@ -481,6 +489,7 @@ struct CustomTabBar: View {
     AdBannerPlaceholderView()
         .padding(AppSpacing.md)
         .background(AppColors.background)
+        .environmentObject(AdsManager.previewReady)
 }
 
 #Preview("App Logo") {

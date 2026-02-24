@@ -197,4 +197,5 @@ struct RootContainerView: View {
 #Preview {
     RootContainerView()
         .environment(LocationManager())
+        .environmentObject(AdsManager.previewReady)
 }

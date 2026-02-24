@@ -17,6 +17,10 @@ struct PourDirectionApp: App {
     @State private var showSplash  = true
     @State private var mainOpacity = 0.0
     @State private var locationManager = LocationManager()
+    @StateObject private var adsManager = AdsManager()
+
+    @AppStorage("com.pourdirection.ageVerified")      private var ageVerified      = false
+    @AppStorage("com.pourdirection.hasLaunchedBefore") private var hasLaunchedBefore = false
 
     var body: some Scene {
         WindowGroup {
@@ -29,6 +33,7 @@ struct PourDirectionApp: App {
                 // Main app shell — fades in after splash is clear
                 RootContainerView()
                     .environment(locationManager)
+                    .environmentObject(adsManager)
                     .opacity(mainOpacity)
 
                 // Splash — fades out first
@@ -36,6 +41,13 @@ struct PourDirectionApp: App {
                     SplashView()
                         .transition(.opacity)
                         .zIndex(1)
+                }
+
+                // Age gate — shown above everything on first launch
+                if !ageVerified {
+                    AgeGateView()
+                        .transition(.opacity)
+                        .zIndex(2)
                 }
             }
             .onAppear {
@@ -56,6 +68,19 @@ struct PourDirectionApp: App {
                 ]
                 #endif
 
+                adsManager.refreshEntitlements()
+
+                // Register notification delegate early
+                _ = NotificationManager.shared
+
+                // ── Local notifications ──────────────────────────────────────
+                // Only request permission on second launch and beyond.
+                // First launch: hasLaunchedBefore = false → skip, then mark true.
+                // Second launch: ageVerified = true AND hasLaunchedBefore = true → request.
+                if ageVerified && hasLaunchedBefore {
+                    NotificationManager.shared.requestPermissionAndSchedule()
+                }
+                hasLaunchedBefore = true
                 // ── Supabase connection test ─────────────────────────────────
                 // Remove once real Edge Functions are deployed.
                 Task { await SupabaseManager.shared.testConnection() }
