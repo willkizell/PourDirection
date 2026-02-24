@@ -51,6 +51,10 @@ struct SuggestionView: View {
     private let savedManager = SavedPlacesManager.shared
     private let adBannerHeight: CGFloat      = 50 + (AppSpacing.xs * 2)
     private let cardMaxHeight: CGFloat       = 420
+    private let cardPhotoHeight: CGFloat     = 200
+    private var cardWidth: CGFloat {
+        min(340, UIScreen.main.bounds.width - (AppSpacing.screenHorizontalPadding * 2))
+    }
 
     private var currentItem: SuggestionItem? {
         guard currentIndex < items.count else { return nil }
@@ -124,19 +128,24 @@ struct SuggestionView: View {
                         placeCard(item.place, category: item.category)
                     } else if !items.isEmpty {
                         VStack(spacing: AppSpacing.sm) {
-                            Image(systemName: "checkmark.circle")
+                            Image(systemName: "moon.zzz.fill")
                                 .font(.system(size: 36))
                                 .foregroundColor(AppColors.primary.opacity(0.6))
                             Text({
                                 if case .mixed = mode {
-                                    return "You've seen all nearby places."
+                                    return "That's everything open nearby."
                                 }
                                 let label = activeCategory?.rawValue.lowercased() ?? "places"
-                                return "You've seen all nearby \(label)s."
+                                return "That's everything open nearby for \(label)s."
                             }())
+                                .font(AppTypography.bodySmall)
+                                .foregroundColor(AppColors.secondary.opacity(0.6))
+                            Text("Try expanding your radius or check back later.")
                                 .font(AppTypography.caption)
-                                .foregroundColor(AppColors.secondary.opacity(0.5))
+                                .foregroundColor(AppColors.secondary.opacity(0.35))
+                                .multilineTextAlignment(.center)
                         }
+                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                     } else {
                         VStack(spacing: AppSpacing.xs) {
                             Text("Nothing open nearby")
@@ -200,18 +209,18 @@ struct SuggestionView: View {
                 case .success(let image):
                     image
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 120, maxHeight: 220)
+                        .scaledToFill()
+                        .frame(width: cardWidth, height: cardPhotoHeight)
                         .clipped()
                 case .failure:
                     photoPlaceholder
+                        .frame(width: cardWidth, height: cardPhotoHeight)
                 default:
                     photoPlaceholder
+                        .frame(width: cardWidth, height: cardPhotoHeight)
                         .overlay(ProgressView().tint(AppColors.primary))
                 }
             }
-            .frame(minHeight: 120, maxHeight: 220)
             .layoutPriority(0)
 
             // ── Info ──────────────────────────────────────────────────────────
@@ -303,19 +312,22 @@ struct SuggestionView: View {
             }
             .padding(.horizontal, AppSpacing.md)
             .padding(.vertical, AppSpacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
         }
-        .frame(maxWidth: 340)
-        .frame(maxHeight: cardMaxHeight)
-        .frame(maxWidth: .infinity, alignment: .center)
-        .background(AppColors.cardSurface.opacity(0.92))
-        .cornerRadius(AppRadius.lg)
-        .overlay(
-            RoundedRectangle(cornerRadius: AppRadius.lg)
-                .stroke(AppColors.secondary.opacity(0.1), lineWidth: 0.5)
-        )
-        .shadow(color: Color.black.opacity(0.5), radius: AppSpacing.sm, x: 0, y: 4)
-        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+                .frame(width: cardWidth)
+                .frame(maxHeight: cardMaxHeight)
+                // 1. Apply the background and corners directly to the strict card width first
+                .background(AppColors.cardSurface.opacity(0.92))
+                .cornerRadius(AppRadius.lg)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.lg)
+                        .stroke(AppColors.secondary.opacity(0.1), lineWidth: 0.5)
+                )
+                .shadow(color: Color.black.opacity(0.5), radius: AppSpacing.sm, x: 0, y: 4)
+                // 2. THEN expand the container to fill the screen so centering and swiping still work perfectly
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.horizontal, AppSpacing.screenHorizontalPadding)
         .offset(x: dragOffset)
         .rotationEffect(.degrees(Double(dragOffset / 30)))
         .gesture(
