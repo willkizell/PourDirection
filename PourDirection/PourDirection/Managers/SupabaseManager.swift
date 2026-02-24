@@ -63,16 +63,22 @@ final class SupabaseManager {
     private struct NearbyPlacesPayload: Encodable {
         let lat: Double
         let lng: Double
+        let type: String
     }
 
-    /// Fetches nearby bars from the "nearby-places" Edge Function.
+    /// Fetches nearby places from the "nearby-places" Edge Function.
+    /// `type` maps to Google Places API `includedTypes` (e.g. "bar", "restaurant").
     /// Returns decoded `Place` values ready for display.
-    func fetchNearbyPlaces(lat: Double, lng: Double) async throws -> [Place] {
+    func fetchNearbyPlaces(lat: Double, lng: Double, type: String = "bar") async throws -> [Place] {
         let response: NearbyPlacesResponse = try await invokeFunction(
             name: "nearby-places",
-            body: NearbyPlacesPayload(lat: lat, lng: lng)
+            body: NearbyPlacesPayload(lat: lat, lng: lng, type: type)
         )
-        return response.places.map { Place(from: $0) }
+        let places = response.places.map { Place(from: $0) }
+        if let first = places.first {
+            print("[NearbyPlaces] \(type) — \(first.name) — isOpenNow: \(String(describing: first.isOpenNow)) — todayHours: \(String(describing: first.todayHours)) — weekdayDesc count: \(first.weekdayDescriptions?.count ?? 0)")
+        }
+        return places
     }
 
     // MARK: - Connection Test

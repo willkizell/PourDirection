@@ -1,68 +1,89 @@
 //
-//  MapItemAnnotationView.swift
+//  MapPinView.swift
 //  PourDirection
 //
-//  Custom map pin annotation. Shows a category-specific SF Symbol
-//  inside a teal-branded circle with a pointed tail.
+//  Reusable map annotation pin. Black fill, category-accent border + icon.
+//  Closed places render at reduced opacity and saturation.
 //
 
 import SwiftUI
 
-struct MapItemAnnotationView: View {
+// MARK: - Pin Tail Shape
+
+/// Downward-pointing triangle (apex at bottom, base at top).
+private struct PinTail: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX,  y: rect.maxY)) // apex
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - MapPinView
+
+struct MapPinView: View {
 
     let category: PlaceCategory
-    let isSelected: Bool
+    let isClosed: Bool
+
+    private var pinColor: Color { category.color }
 
     private var iconName: String {
         switch category {
-        case .bar:         return "wineglass.fill"
-        case .club:        return "music.note"
-        case .liquorStore: return "basket.fill"
-        case .event:       return "star.fill"
+        case .bar:        return "wineglass"
+        case .restaurant: return "fork.knife"
+        case .club:       return "music.note"
+        case .dispensary: return "leaf"
         }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Pin head
+        ZStack {
+            // Triangle tail — drawn first so the circle sits on top of it
             ZStack {
-                Circle()
-                    .fill(isSelected ? AppColors.primary : AppColors.cardSurface)
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Circle()
-                            .stroke(AppColors.primary, lineWidth: isSelected ? 2 : 1)
-                    )
-                    .shadow(
-                        color: AppColors.primary.opacity(isSelected ? 0.5 : 0.2),
-                        radius: isSelected ? 8 : 4
-                    )
-
-                Image(systemName: iconName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(isSelected ? AppColors.secondary : AppColors.primary)
+                PinTail().fill(Color.black)
+                PinTail().stroke(pinColor, lineWidth: 1.5)
             }
+            .frame(width: 13, height: 9)
+            .offset(y: 21)
 
-            // Pin tail
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 10))
-                .foregroundColor(isSelected ? AppColors.primary : AppColors.cardSurface)
-                .rotationEffect(.degrees(180))
-                .offset(y: -3)
+            // Circle body — black fill with accent border
+            Circle()
+                .fill(Color.black)
+                .frame(width: 36, height: 36)
+                .overlay(Circle().stroke(pinColor, lineWidth: 1.5))
+
+            // Category icon in accent color
+            Image(systemName: iconName)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(pinColor)
         }
-        .scaleEffect(isSelected ? 1.15 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .opacity(isClosed ? 0.50 : 1.0)
+        .saturation(isClosed ? 0.3 : 1.0)
     }
 }
+
+// MARK: - Preview
 
 #Preview {
     ZStack {
         Color.black.ignoresSafeArea()
-        HStack(spacing: 24) {
-            MapItemAnnotationView(category: .bar, isSelected: false)
-            MapItemAnnotationView(category: .club, isSelected: true)
-            MapItemAnnotationView(category: .event, isSelected: false)
-            MapItemAnnotationView(category: .liquorStore, isSelected: false)
+        VStack(spacing: 32) {
+            HStack(spacing: 28) {
+                MapPinView(category: .bar,        isClosed: false)
+                MapPinView(category: .restaurant, isClosed: false)
+                MapPinView(category: .club,       isClosed: false)
+                MapPinView(category: .dispensary, isClosed: false)
+            }
+            HStack(spacing: 28) {
+                MapPinView(category: .bar,        isClosed: true)
+                MapPinView(category: .restaurant, isClosed: true)
+                MapPinView(category: .club,       isClosed: true)
+                MapPinView(category: .dispensary, isClosed: true)
+            }
         }
     }
 }

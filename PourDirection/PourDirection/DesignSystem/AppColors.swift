@@ -44,6 +44,19 @@ struct AppColors {
     /// Teal brand color — #1A9F86
     static let primary         = Color(hex: "1A9F86")
 
+    // Category Colors
+    /// Bar category color — teal brand color (alias of primary)
+    static var barTeal:          Color { primary }
+
+    /// Restaurant category color — cornflower blue — #4B8EF1
+    static let restaurantBlue  = Color(hex: "4B8EF1")
+
+    /// Club category color — crimson red — #E92F57
+    static let clubRed         = Color(hex: "E92F57")
+
+    /// Dispensary category color — warm gold — #AC896A
+    static let dispensaryGold  = Color(hex: "AC896A")
+
     /// White — used for primary text and high-emphasis elements
     static let secondary       = Color(hex: "FFFFFF")
 

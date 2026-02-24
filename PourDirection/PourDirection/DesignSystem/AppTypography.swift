@@ -103,9 +103,17 @@ struct AppTypography {
     /// Poppins SemiBold / 26pt
     static let titleSmall  = Font.poppins(.semiBold, size: 26)
 
+    /// Slightly larger small title — used for prominent two-line headers
+    /// Poppins SemiBold / 28pt
+    static let titleSmallLarge = Font.poppins(.semiBold, size: 28)
+
     /// Medium title — screen-level headings
     /// Poppins SemiBold / 24pt
     static let titleMedium = Font.poppins(.semiBold, size: 24)
+
+    /// Compact title — smaller, lighter two-line headers
+    /// Poppins Medium / 22pt
+    static let titleCompact = Font.poppins(.medium, size: 22)
 
     /// Section header — grouping labels, nav titles
     /// Poppins SemiBold / 18pt

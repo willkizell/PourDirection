@@ -7,16 +7,15 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 // MARK: - App Route
 
 /// Typed destinations pushed onto the NavigationStack path.
 /// All route transitions are initiated by RootContainerView.
 enum AppRoute: Hashable {
-    case barSuggestion(vibe: String?)
-    case eventSuggestion(vibe: String)
-    case pickYourVibe
-    case mixedSuggestion
+    case suggestions(category: PlaceCategory)
+    case suggestionsMixed
     case compass(Place)
     case editProfile
     case help
@@ -31,17 +30,16 @@ struct RootContainerView: View {
     @State private var navigationPath               = NavigationPath()
     // Drives fullScreenCover via item: — avoids the isPresented timing bug.
     @State private var compassPresentation: Place?  = nil
-    // Tracks the currently visible pushed route for conditional UI (e.g. ad banner).
-    @State private var activeRoute: AppRoute?       = nil
 
     private var shouldHideAdBanner: Bool {
         if selectedTab == .profile { return true }
         if selectedTab == .map { return true }
-        if case .eventSuggestion = activeRoute { return true }
         if case .editProfile = activeRoute { return true }
         if case .help = activeRoute { return true }
         return false
     }
+
+    @State private var activeRoute: AppRoute? = nil
 
     // ── Body ─────────────────────────────────────────────────────────────────
     var body: some View {
@@ -80,7 +78,14 @@ struct RootContainerView: View {
         .fullScreenCover(item: $compassPresentation) { place in
             CompassActiveView(
                 place:        place,
-                onOpenInMaps: { /* Maps integration — future phase */ },
+                onOpenInMaps: {
+                    let lat  = place.coordinate.latitude
+                    let lng  = place.coordinate.longitude
+                    let name = place.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+                    if let url = URL(string: "maps://?daddr=\(lat),\(lng)&dirflg=w&q=\(name)") {
+                        UIApplication.shared.open(url)
+                    }
+                },
                 selectedTab:  $selectedTab,
                 onDismiss: {
                     compassPresentation = nil
@@ -102,16 +107,19 @@ struct RootContainerView: View {
         switch selectedTab {
         case .explore:
             ExploreView(
-                onFindBar:           { navigationPath.append(AppRoute.barSuggestion(vibe: nil)) },
-                onFindSomethingElse: { navigationPath.append(AppRoute.pickYourVibe) },
-                onSurpriseMe:        { navigationPath.append(AppRoute.mixedSuggestion) }
+                onFindBar:        { navigationPath.append(AppRoute.suggestions(category: .bar)) },
+                onFindRestaurant: { navigationPath.append(AppRoute.suggestions(category: .restaurant)) },
+                onFindClub:       { navigationPath.append(AppRoute.suggestions(category: .club)) },
+                onFindDispensary: { navigationPath.append(AppRoute.suggestions(category: .dispensary)) }
             )
         case .saved:
-            comingSoonPlaceholder(label: "Saved")
+            SavedView(onLetsGo: { place in
+                compassPresentation = place
+            })
         case .map:
             MapTabView(onLetsGo: { mapItem in
                 compassPresentation = Place(
-                    id:               mapItem.id.uuidString,
+                    id:               mapItem.id,
                     name:             mapItem.name,
                     formattedAddress: nil,
                     coordinate:       mapItem.coordinate,
@@ -120,8 +128,7 @@ struct RootContainerView: View {
             })
         case .profile:
             ProfileView(
-                onEditProfile: { navigationPath.append(AppRoute.editProfile) },
-                onHelp:        { navigationPath.append(AppRoute.help) }
+                onHelp: { navigationPath.append(AppRoute.help) }
             )
         }
     }
@@ -131,53 +138,29 @@ struct RootContainerView: View {
     @ViewBuilder
     private func destinationView(for route: AppRoute) -> some View {
         switch route {
-        case .barSuggestion:
+        case .suggestions(let category):
             SuggestionView(
+                category: category,
                 onLetsGo: { place in
                     compassPresentation = place
-                },
-                onNotFeelingIt: {
-                    navigationPath.removeLast()
                 }
             )
-        case .pickYourVibe:
-            PickYourVibeView(
-                onSelectVibe: { vibe in
-                    navigationPath.append(AppRoute.eventSuggestion(vibe: vibe))
-                }
-            )
-        case .eventSuggestion(let vibe):
-            SuggestionView(
-                onLetsGo: { place in
-                    compassPresentation = place
-                },
-                onNotFeelingIt: {
-                    navigationPath.removeLast()
-                }
-            )
-            .onAppear    { activeRoute = .eventSuggestion(vibe: vibe) }
-            .onDisappear { activeRoute = nil }
-        case .mixedSuggestion:
-            MixedSuggestionView(
-                onSelectPlace: { place in
-                    compassPresentation = Place(
-                        id:               place.id.uuidString,
-                        name:             place.name,
-                        formattedAddress: nil,
-                        coordinate:       place.coordinate,
-                        rating:           place.rating
-                    )
-                }
-            )
+        case .suggestionsMixed:
+            SuggestionView.mixed { place in
+                compassPresentation = place
+            }
         case .compass(let place):
             // Compass is presented via fullScreenCover(item:), not as a pushed destination.
-            // The associated Place is available here for future deep-link or push use.
             let _ = place
             EmptyView()
         case .editProfile:
             EditProfileView(onBack: { navigationPath.removeLast() })
+                .onAppear    { activeRoute = .editProfile }
+                .onDisappear { activeRoute = nil }
         case .help:
             HelpView(onBack: { navigationPath.removeLast() })
+                .onAppear    { activeRoute = .help }
+                .onDisappear { activeRoute = nil }
         }
     }
 
@@ -206,7 +189,7 @@ struct RootContainerView: View {
                 compassPresentation = place
             }
         } else {
-            navigationPath.append(AppRoute.barSuggestion(vibe: nil))
+            navigationPath.append(AppRoute.suggestionsMixed)
         }
     }
 }

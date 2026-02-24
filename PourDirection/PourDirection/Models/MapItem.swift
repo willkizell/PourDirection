@@ -2,41 +2,58 @@
 //  MapItem.swift
 //  PourDirection
 //
-//  Core venue/event model. Replaces MockPlace with typed category enum
-//  and real coordinate support. Distance is never stored — always derived
+//  Core venue model. Distance is never stored — always derived
 //  from LocationManager at display time.
 //
 
 import Foundation
 import CoreLocation
+import SwiftUI
 
 // MARK: - Place Category
 
 enum PlaceCategory: String, CaseIterable, Codable {
-    case bar         = "Bar"
-    case club        = "Club"
-    case liquorStore = "Liquor Store"
-    case event       = "Event"
+    case bar        = "Bar"
+    case restaurant = "Restaurant"
+    case club       = "Club"
+    case dispensary = "Dispensary"
+
+    /// Google Places API `includedTypes` value for this category.
+    var googleIncludedType: String {
+        switch self {
+        case .bar:        return "bar"
+        case .restaurant: return "restaurant"
+        case .club:       return "night_club"
+        case .dispensary: return "dispensary"
+        }
+    }
+
+    /// Brand color for this category — single source of truth across the app.
+    var color: Color {
+        switch self {
+        case .bar:        return AppColors.barTeal
+        case .restaurant: return AppColors.restaurantBlue
+        case .club:       return AppColors.clubRed
+        case .dispensary: return AppColors.dispensaryGold
+        }
+    }
 }
 
 // MARK: - MapItem
 
 struct MapItem: Identifiable, Hashable {
 
-    let id: UUID
+    let id: String                      // Google place ID for API items; UUID string for mocks
     let name: String
     let coordinate: CLLocationCoordinate2D
     let category: PlaceCategory
-    let vibe: String
+    let vibe: String?                   // nil for API-sourced items
     let rating: Double?
     let isOpen: Bool?
     let closingTime: String?
     let reviewCount: Int?
-    // Event-specific (nil for bars/clubs/stores)
-    let eventTime: String?
-    let venue: String?
-    let priceRange: String?
-    let isTonight: Bool
+    let photoURL: URL?                  // populated from Google Places photo API
+    let weekdayDescriptions: [String]?  // from Google Places currentOpeningHours
 
     // MARK: - Hashable (CLLocationCoordinate2D is not Hashable)
 
@@ -56,7 +73,6 @@ struct MapItem: Identifiable, Hashable {
     }
 
     /// Format a distance value for UI display.
-    /// Uses MeasurementFormatter for locale-aware units (km in Canada, mi in US).
     static func formatDistance(_ meters: CLLocationDistance?) -> String {
         guard let meters, meters >= 100 else { return "Nearby" }
         let measurement = Measurement(value: meters, unit: UnitLength.meters)
@@ -72,21 +88,83 @@ struct MapItem: Identifiable, Hashable {
         let lat1 = origin.latitude * .pi / 180
         let lat2 = destination.latitude * .pi / 180
         let dLon = (destination.longitude - origin.longitude) * .pi / 180
-
         let y = sin(dLon) * cos(lat2)
         let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
         let radians = atan2(y, x)
         return (radians * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
     }
 
+    // MARK: - Opening Hours Helpers
+
+    /// Today's hours extracted from weekdayDescriptions (e.g. "11:00 AM – 2:00 AM").
+    var todayHours: String? {
+        guard let descriptions = weekdayDescriptions, !descriptions.isEmpty else { return nil }
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        let dayName = Calendar.current.weekdaySymbols[weekday - 1]
+        guard let entry = descriptions.first(where: { $0.localizedCaseInsensitiveContains(dayName) }) else { return nil }
+        if let range = entry.range(of: ": ") {
+            let hours = String(entry[range.upperBound...])
+            if hours.localizedCaseInsensitiveContains("closed") { return nil }
+            return hours
+        }
+        return nil
+    }
+
+    /// Closing time for today (e.g. "2:00 AM"). Only meaningful when the place is open.
+    var closesAt: String? {
+        guard let hours = todayHours else { return nil }
+        return Self.splitHoursRange(hours)?.close
+    }
+
+    /// Next opening time. Scans today then subsequent days.
+    var opensAt: String? {
+        guard let descriptions = weekdayDescriptions, !descriptions.isEmpty else { return nil }
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: Date())
+        let symbols = calendar.weekdaySymbols
+        for offset in 0..<7 {
+            let dayIndex = (weekday - 1 + offset) % 7
+            let dayName = symbols[dayIndex]
+            guard let entry = descriptions.first(where: {
+                $0.localizedCaseInsensitiveContains(dayName)
+            }) else { continue }
+            guard let colonRange = entry.range(of: ": ") else { continue }
+            let hoursStr = String(entry[colonRange.upperBound...])
+            if hoursStr.localizedCaseInsensitiveContains("closed") { continue }
+            guard let times = Self.splitHoursRange(hoursStr) else { continue }
+            if offset == 0 {
+                return times.open
+            } else {
+                let shortDay = calendar.shortWeekdaySymbols[dayIndex]
+                return "\(shortDay) \(times.open)"
+            }
+        }
+        return nil
+    }
+
+    private static func splitHoursRange(_ hours: String) -> (open: String, close: String)? {
+        let dashes: [Character] = ["\u{2013}", "\u{2014}", "-"]
+        for dash in dashes {
+            if let idx = hours.firstIndex(of: dash) {
+                let openPart = String(hours[hours.startIndex..<idx])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let closePart = String(hours[hours.index(after: idx)...])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !openPart.isEmpty, !closePart.isEmpty {
+                    return (openPart, closePart)
+                }
+            }
+        }
+        return nil
+    }
+
     // MARK: - Mock Factory
 
-    /// Random mock MapItem — ports logic from the old MockPlace.generate().
+    /// Random mock MapItem — used in Xcode previews.
     static func mock(category: PlaceCategory, vibe: String) -> MapItem {
         let ratings      = [3.8, 4.0, 4.1, 4.2, 4.3, 4.5, 4.7, 4.8]
         let reviewCounts = [5, 12, 28, 47, 89, 134, 203, 389]
 
-        // Random coordinate near Vancouver (49.2827, -123.1207)
         let baseLat = 49.2827
         let baseLng = -123.1207
         let coord = CLLocationCoordinate2D(
@@ -94,63 +172,24 @@ struct MapItem: Identifiable, Hashable {
             longitude: baseLng + Double.random(in: -0.02...0.02)
         )
 
-        if category == .event {
-            let chillNames     = ["Live Jazz Night", "Acoustic Sessions", "Wine & Canvas", "Art Gallery Opening"]
-            let energeticNames = ["Rooftop Sessions", "DJ Battle Night", "The Midnight Live", "Electronic Night"]
-            let otherNames     = ["Comedy Open Mic", "Karaoke Night", "Trivia Night", "Stand-Up Showcase"]
-
-            let pool: [String] = {
-                switch vibe {
-                case "Chill":     return chillNames
-                case "Energetic": return energeticNames
-                default:          return otherNames
-                }
-            }()
-
-            let venues       = ["The Cellar Jazz Club", "Rooftop at The Ace", "Underground Lounge",
-                                "The Grand Ballroom", "Velvet Room", "District Stage"]
-            let tonightTimes = ["Tonight at 7:00 PM", "Tonight at 9:00 PM", "Tonight at 10:30 PM"]
-            let upcomingTimes = ["Sat at 8:00 PM", "Sun at 7:30 PM", "Fri at 9:00 PM"]
-            let prices       = ["$10–$20", "$15–$30", "$20–$40", "Free", "$25–$50"]
-
-            let eventTime = (tonightTimes + upcomingTimes).randomElement()!
-            let isTonight = eventTime.hasPrefix("Tonight")
-
-            return MapItem(
-                id:          UUID(),
-                name:        pool.randomElement()!,
-                coordinate:  coord,
-                category:    .event,
-                vibe:        vibe,
-                rating:      ratings.randomElement()!,
-                isOpen:      true,
-                closingTime: eventTime,
-                reviewCount: reviewCounts.randomElement()!,
-                eventTime:   eventTime,
-                venue:       venues.randomElement()!,
-                priceRange:  prices.randomElement()!,
-                isTonight:   isTonight
-            )
-        }
-
-        // Bar / Club / Liquor Store
-        let barNames   = ["The Rusty Anchor", "Cellar No. 7", "The Copper Still", "Harbor Social"]
-        let clubNames  = ["Neon Serenade", "Echo Lounge", "Apex Club", "Drift"]
-        let storeNames = ["The Bottle Shop", "Reserve Liquors", "Corner Stock", "The Pour House"]
+        let barNames        = ["The Rusty Anchor", "Cellar No. 7", "The Copper Still", "Harbor Social"]
+        let restaurantNames = ["The Larder", "Olive & Salt", "East Side Kitchen", "The Table"]
+        let clubNames       = ["Neon Serenade", "Echo Lounge", "Apex Club", "Drift"]
+        let dispensaryNames = ["Green Room", "The Vault", "Elevated", "Canopy"]
 
         let pool: [String] = {
             switch category {
-            case .club:        return clubNames
-            case .liquorStore: return storeNames
-            case .event:       return []   // handled above
-            case .bar:         return barNames
+            case .bar:        return barNames
+            case .restaurant: return restaurantNames
+            case .club:       return clubNames
+            case .dispensary: return dispensaryNames
             }
         }()
 
         let closingTimes = ["12:00 AM", "1:00 AM", "2:00 AM", "3:00 AM"]
 
         return MapItem(
-            id:          UUID(),
+            id:          UUID().uuidString,
             name:        pool.randomElement()!,
             coordinate:  coord,
             category:    category,
@@ -159,15 +198,33 @@ struct MapItem: Identifiable, Hashable {
             isOpen:      Bool.random(),
             closingTime: closingTimes.randomElement()!,
             reviewCount: reviewCounts.randomElement()!,
-            eventTime:   nil,
-            venue:       nil,
-            priceRange:  nil,
-            isTonight:   false
+            photoURL:    nil,
+            weekdayDescriptions: nil
         )
     }
 
     /// Fresh random item with the same category/vibe — used for "Not Feeling It".
     func regenerated() -> MapItem {
-        MapItem.mock(category: category, vibe: vibe)
+        MapItem.mock(category: category, vibe: vibe ?? "Chill")
+    }
+}
+
+// MARK: - API Initializer
+// In an extension so the compiler-synthesised memberwise init is preserved.
+
+extension MapItem {
+    /// Create a MapItem directly from a Google Places API result.
+    init(from place: Place, category: PlaceCategory) {
+        self.id                  = place.id
+        self.name                = place.name
+        self.coordinate          = place.coordinate
+        self.category            = category
+        self.vibe                = nil
+        self.rating              = place.rating
+        self.isOpen              = place.isOpenNow
+        self.closingTime         = nil
+        self.reviewCount         = nil
+        self.photoURL            = place.photoURL
+        self.weekdayDescriptions = place.weekdayDescriptions
     }
 }

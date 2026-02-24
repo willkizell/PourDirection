@@ -29,6 +29,7 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         super.init()
         manager.delegate = self
         manager.headingFilter = 5
+        manager.headingOrientation = .portrait
         manager.desiredAccuracy = kCLLocationAccuracyBest
     }
 

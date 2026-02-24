@@ -2,8 +2,7 @@
 //  ProfileView.swift
 //  PourDirection
 //
-//  Your Profile screen — settings hub with user info, security toggles,
-//  account actions, and PourPro upsell. All values are mock for now.
+//  Profile screen — settings hub with Remove Ads upsell and Help.
 //  Navigation delegated to RootContainerView via closures.
 //
 
@@ -13,14 +12,10 @@ import SwiftUI
 
 struct ProfileView: View {
 
-    // Mock state — replace with real user model when backend is ready
-    @State private var user = MockUser()
-    @State private var notificationsEnabled  = true
-    @State private var locationEnabled       = true
-    @State private var faceIDEnabled         = true
-    @State private var showUpgradeSheet      = false
+    @State private var notificationsEnabled = true
+    @State private var locationEnabled      = true
+    @State private var showUpgradeSheet     = false
 
-    let onEditProfile: () -> Void
     let onHelp: () -> Void
 
     var body: some View {
@@ -31,9 +26,9 @@ struct ProfileView: View {
             VStack(spacing: 0) {
 
                 // ── Fixed Header ────────────────────────────────────────────
-                (Text("Your")
+                (Text("Pour's ")
                     .foregroundColor(AppColors.primary)
-                 + Text("Profile")
+                 + Text("Settings")
                     .foregroundColor(AppColors.secondary))
                     .font(AppTypography.titleSmall)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -46,40 +41,8 @@ struct ProfileView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
 
-                        // ── User Card ───────────────────────────────────────
-                        HStack(spacing: AppSpacing.sm) {
-                            Image(systemName: user.avatarSystemName)
-                                .font(.system(size: 44))
-                                .foregroundColor(AppColors.secondary.opacity(0.6))
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(user.fullName)
-                                    .font(AppTypography.header)
-                                    .foregroundColor(AppColors.secondary)
-                                Text(user.email)
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(AppColors.secondary.opacity(0.45))
-                            }
-
-                            Spacer()
-
-                            Button(action: onEditProfile) {
-                                Text("Edit Profile")
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(AppColors.secondary)
-                                    .padding(.horizontal, AppSpacing.sm)
-                                    .padding(.vertical, AppSpacing.xs)
-                                    .background(AppColors.primary.opacity(0.7))
-                                    .cornerRadius(AppRadius.sm)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
-                        .padding(.top, AppSpacing.md)
-                        .padding(.bottom, AppSpacing.lg)
-
-                        // ── Security Section ────────────────────────────────
-                        sectionHeader("Security")
+                        // ── Preferences Section ───────────────────────────
+                        sectionHeader("Preferences")
 
                         SettingsToggleRow(
                             icon: "bell",
@@ -93,19 +56,6 @@ struct ProfileView: View {
                             isOn: $locationEnabled
                         )
 
-                        // ── Account Section ─────────────────────────────────
-                        sectionHeader("Account")
-
-                        SettingsNavRow(icon: "lock", title: "Change Password") {
-                            // Future phase — password change flow
-                        }
-
-                        SettingsToggleRow(
-                            icon: "faceid",
-                            title: "Login with Face ID",
-                            isOn: $faceIDEnabled
-                        )
-
                         // ── Actions ─────────────────────────────────────────
                         VStack(spacing: 0) {
                             SettingsNavRow(icon: "crown", title: "Remove Ads") {
@@ -113,10 +63,6 @@ struct ProfileView: View {
                             }
 
                             SettingsNavRow(icon: "questionmark.circle", title: "Help", action: onHelp)
-
-                            SettingsNavRow(icon: "rectangle.portrait.and.arrow.right", title: "Logout") {
-                                // Future phase — logout flow
-                            }
                         }
                         .padding(.top, AppSpacing.sm)
 
@@ -216,7 +162,7 @@ struct SettingsNavRow: View {
 
 #Preview {
     ZStack(alignment: .bottom) {
-        ProfileView(onEditProfile: {}, onHelp: {})
+        ProfileView(onHelp: {})
         CustomTabBar(selectedTab: .constant(.profile))
     }
     .ignoresSafeArea(edges: .bottom)

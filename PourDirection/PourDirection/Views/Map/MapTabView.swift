@@ -26,14 +26,10 @@ struct MapTabView: View {
         )
     )
 
-    // Mock pins — generated once, stable across re-renders
-    private static let mockPlaces: [MapItem] = MapTabView.generateMockPlaces()
-    @State private var places: [MapItem] = MapTabView.mockPlaces
+    @State private var places: [MapItem] = []
+    @State private var hasLoadedPlaces = false
 
-    /// Compact detent height varies by category — events have more rows.
-    private func compactHeight(for place: MapItem) -> CGFloat {
-        place.category == .event ? 340 : 300
-    }
+    private func compactHeight(for place: MapItem) -> CGFloat { 300 }
 
     /// True when sheet is dragged to full-page detent.
     private var isSheetExpanded: Bool { selectedDetent == .large }
@@ -92,10 +88,13 @@ struct MapTabView: View {
 
                 ForEach(places) { place in
                     Annotation(place.name, coordinate: place.coordinate, anchor: .bottom) {
-                        MapItemAnnotationView(
+                        MapPinView(
                             category: place.category,
-                            isSelected: selectedItem?.id == place.id
+                            isClosed: !(place.isOpen ?? true)
                         )
+                        .scaleEffect(selectedItem?.id == place.id ? 1.2 : 1.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.7),
+                                   value: selectedItem?.id == place.id)
                         .highPriorityGesture(
                             TapGesture().onEnded {
                                 selectItem(place)
@@ -167,6 +166,12 @@ struct MapTabView: View {
             locationManager.requestPermission()
             locationManager.startUpdating()
         }
+        .task { await fetchPlaces() }
+        // One-shot retry once location arrives (e.g. permission granted after task fires)
+        .onChange(of: locationManager.currentLocation) { _, newLocation in
+            guard newLocation != nil, !hasLoadedPlaces else { return }
+            Task { await fetchPlaces() }
+        }
         .sheet(item: $selectedItem) { place in
             MapItemBottomSheet(
                 place: place,
@@ -197,27 +202,55 @@ struct MapTabView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    // MARK: - Mock Data Generator
+    // MARK: - Data Fetch
 
-    private static func generateMockPlaces() -> [MapItem] {
-        let categories: [(PlaceCategory, String)] = [
-            (.bar,         "Chill"),
-            (.bar,         "Energetic"),
-            (.bar,         "Lively"),
-            (.club,        "Energetic"),
-            (.club,        "Party"),
-            (.event,       "Chill"),
-            (.event,       "Energetic"),
-            (.liquorStore, "Chill"),
-            (.bar,         "Date Night"),
-            (.bar,         "Sports"),
-            (.club,        "Lively"),
-            (.event,       "Chill"),
-        ]
+    private func fetchPlaces() async {
+        guard let loc = locationManager.currentLocation else { return }
 
-        return categories.map { category, vibe in
-            MapItem.mock(category: category, vibe: vibe)
+        let lat = loc.coordinate.latitude
+        let lng = loc.coordinate.longitude
+
+        // Fetch all four categories in parallel
+        async let barResults        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar")
+        async let restaurantResults = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant")
+        async let clubResults       = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club")
+        async let dispoResults      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary")
+
+        var combined: [MapItem] = []
+
+        if let bars = try? await barResults {
+            combined += bars.map { MapItem(from: $0, category: .bar) }
         }
+        if let restaurants = try? await restaurantResults {
+            combined += restaurants.map { MapItem(from: $0, category: .restaurant) }
+        }
+        if let clubs = try? await clubResults {
+            let filtered = clubs.filter {
+                let t = Set($0.types)
+                return t.contains("night_club") && !t.contains("restaurant")
+            }
+            combined += filtered.map { MapItem(from: $0, category: .club) }
+        }
+        if let dispos = try? await dispoResults {
+            let filtered = dispos.filter {
+                ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= 3000
+            }
+            combined += filtered.map { MapItem(from: $0, category: .dispensary) }
+        }
+
+        places = combined
+
+        // Center map on user location once places arrive
+        withAnimation(.easeInOut(duration: 0.5)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: loc.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)
+                )
+            )
+        }
+
+        hasLoadedPlaces = true
     }
 }
 

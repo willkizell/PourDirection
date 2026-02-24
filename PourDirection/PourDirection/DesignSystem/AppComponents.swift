@@ -44,17 +44,40 @@ extension View {
 /// Use for the most important call-to-action on a screen.
 struct PrimaryButton: View {
     let title: String
+    let iconName: String?
+    let verticalPadding: CGFloat
     let action: () -> Void
 
+    init(
+        title: String,
+        iconName: String? = nil,
+        verticalPadding: CGFloat = AppSpacing.md,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.iconName = iconName
+        self.verticalPadding = verticalPadding
+        self.action = action
+    }
+
     var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(AppTypography.bodyMedium)
-                .foregroundColor(AppColors.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppSpacing.md)
-                .background(AppColors.primary)
-                .clipShape(Capsule())
+        Button(action: {
+            HapticManager.shared.heavy()
+            action()
+        }) {
+            HStack(spacing: AppSpacing.iconLabelSpacing) {
+                if let iconName {
+                    Image(systemName: iconName)
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                Text(title)
+            }
+            .font(AppTypography.bodyMedium)
+            .foregroundColor(AppColors.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, verticalPadding)
+            .background(AppColors.primary)
+            .clipShape(Capsule())
         }
     }
 }
@@ -65,21 +88,41 @@ struct PrimaryButton: View {
 /// Use for low-emphasis secondary actions (e.g. "Sign In", "Cancel").
 struct SecondaryButton: View {
     let title: String
+    let iconName: String?
+    let verticalPadding: CGFloat
     let action: () -> Void
+
+    init(
+        title: String,
+        iconName: String? = nil,
+        verticalPadding: CGFloat = AppSpacing.md,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.iconName = iconName
+        self.verticalPadding = verticalPadding
+        self.action = action
+    }
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(AppTypography.bodyMedium)
-                .foregroundColor(AppColors.secondary.opacity(0.6))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppSpacing.md)
-                .background(Color.clear)
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(AppColors.secondary.opacity(0.2), lineWidth: 1.0)
-                )
+            HStack(spacing: AppSpacing.iconLabelSpacing) {
+                if let iconName {
+                    Image(systemName: iconName)
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                Text(title)
+            }
+            .font(AppTypography.bodyMedium)
+            .foregroundColor(AppColors.secondary.opacity(0.6))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, verticalPadding)
+            .background(Color.clear)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(AppColors.secondary.opacity(0.2), lineWidth: 1.0)
+            )
         }
     }
 }
@@ -180,7 +223,7 @@ enum AppTab: Int, CaseIterable {
         case .explore: return "Explore"
         case .saved:   return "Saved"
         case .map:     return "Map"
-        case .profile: return "Profile"
+        case .profile: return "Settings"
         }
     }
 
@@ -189,7 +232,7 @@ enum AppTab: Int, CaseIterable {
         case .explore: return "dot.radiowaves.left.and.right"
         case .saved:   return "heart"
         case .map:     return "map"
-        case .profile: return "person"
+        case .profile: return "gearshape"
         }
     }
 
@@ -198,7 +241,7 @@ enum AppTab: Int, CaseIterable {
         case .explore: return "dot.radiowaves.left.and.right"
         case .saved:   return "heart.fill"
         case .map:     return "map.fill"
-        case .profile: return "person.fill"
+        case .profile: return "gearshape.fill"
         }
     }
 }
@@ -213,10 +256,11 @@ private struct TabBarItem: View {
     private var isSelected: Bool { selectedTab == tab }
 
     var body: some View {
-        Button {
+        Button(action: {
+            HapticManager.shared.light()
             selectedTab = tab
             onTap()
-        } label: {
+        }) {
             Image(systemName: isSelected ? tab.selectedIcon : tab.defaultIcon)
                 .font(.system(size: 24))
                 .foregroundColor(isSelected ? AppColors.primary : AppColors.secondary.opacity(0.4))
@@ -273,7 +317,10 @@ struct CustomTabBar: View {
                 TabBarItem(tab: .saved,   selectedTab: $selectedTab, onTap: { onTabTap(.saved) })
 
                 // ── Center Compass Slot ─────────────────────────────────────
-                Button(action: onCompassTap) {
+                Button(action: {
+                    HapticManager.shared.light()
+                    onCompassTap()
+                }) {
                     ZStack {
                         Circle()
                             .fill(AppColors.primary)

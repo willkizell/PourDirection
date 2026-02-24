@@ -3,8 +3,7 @@
 //  PourDirection
 //
 //  Expandable bottom sheet for map pin selection.
-//  Compact: no photo, all key info + CTA visible. Height varies by category.
-//  Expanded (.large): padded rounded photo at top, full detail below.
+//  Compact: all key info + CTA visible. Expanded: hero photo at top.
 //
 
 import SwiftUI
@@ -21,29 +20,28 @@ struct MapItemBottomSheet: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
 
-                // ── Photo — only shown when expanded, padded & rounded ────
+                // ── Hero Photo — only when expanded ──────────────────────────
                 if isExpanded {
-                    ZStack {
-                        AppColors.cardSurface.opacity(0.7)
-                        Image(systemName: "photo")
-                            .font(.system(size: 36))
-                            .foregroundColor(AppColors.secondary.opacity(0.10))
-
-                        if place.isTonight {
-                            Text("Tonight!")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(AppColors.secondary)
-                                .padding(.horizontal, AppSpacing.xs)
-                                .padding(.vertical, 4)
-                                .background(AppColors.primary)
-                                .cornerRadius(AppRadius.sm)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity,
-                                       alignment: .topLeading)
-                                .padding(AppSpacing.sm)
+                    Group {
+                        if let photoURL = place.photoURL {
+                            AsyncImage(url: photoURL) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 200)
+                                        .clipped()
+                                default:
+                                    photoPlaceholder
+                                }
+                            }
+                            .frame(height: 200)
+                        } else {
+                            photoPlaceholder
                         }
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
                     .clipShape(RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous))
                     .padding(.horizontal, AppSpacing.lg)
                     .padding(.top, AppSpacing.lg)
@@ -51,7 +49,7 @@ struct MapItemBottomSheet: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
-                // ── Place Info ────────────────────────────────────────────
+                // ── Place Info ────────────────────────────────────────────────
                 VStack(alignment: .leading, spacing: AppSpacing.xs) {
 
                     // Name + category badge
@@ -64,14 +62,14 @@ struct MapItemBottomSheet: View {
                         Spacer()
                         Text(place.displayCategory)
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(AppColors.primary)
+                            .foregroundColor(place.category.color)
                             .padding(.horizontal, AppSpacing.xs)
                             .padding(.vertical, 3)
-                            .background(AppColors.primary.opacity(0.12))
+                            .background(place.category.color.opacity(0.15))
                             .cornerRadius(AppRadius.sm)
                     }
 
-                    // Meta row: rating + distance + open status
+                    // Meta row: rating + distance
                     HStack(spacing: AppSpacing.xs) {
                         HStack(spacing: 3) {
                             Image(systemName: "star.fill")
@@ -94,48 +92,28 @@ struct MapItemBottomSheet: View {
                         .foregroundColor(AppColors.secondary.opacity(0.6))
 
                         Spacer()
-
-                        HStack(spacing: AppSpacing.xxs) {
-                            Circle()
-                                .fill((place.isOpen ?? false)
-                                      ? AppColors.primary
-                                      : AppColors.secondary.opacity(0.3))
-                                .frame(width: 6, height: 6)
-                            Text((place.isOpen ?? false) ? "Open" : "Closed")
-                                .font(AppTypography.caption)
-                                .foregroundColor(
-                                    (place.isOpen ?? false)
-                                        ? AppColors.primary
-                                        : AppColors.secondary.opacity(0.4)
-                                )
-                        }
                     }
 
-                    // Event-specific or bar-specific info
-                    if place.category == .event {
-                        HStack {
-                            if let t = place.eventTime {
-                                Label(t, systemImage: "clock")
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(AppColors.secondary.opacity(0.6))
-                            }
-                            Spacer()
-                            if let p = place.priceRange {
-                                Label(p, systemImage: "ticket")
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(AppColors.secondary.opacity(0.6))
-                            }
-                        }
-                        if let v = place.venue {
-                            Label(v, systemImage: "mappin.and.ellipse")
+                    // Open/Closed status row
+                    if let isOpen = place.isOpen {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(isOpen ? AppColors.primary : AppColors.clubRed)
+                                .frame(width: 6, height: 6)
+                            Text(isOpen ? "Open" : "Closed")
                                 .font(AppTypography.caption)
-                                .foregroundColor(AppColors.secondary.opacity(0.6))
-                        }
-                    } else {
-                        if let closingTime = place.closingTime {
-                            Label("Closes at \(closingTime)", systemImage: "clock")
-                                .font(AppTypography.caption)
-                                .foregroundColor(AppColors.secondary.opacity(0.6))
+                                .foregroundColor(isOpen ? AppColors.primary : AppColors.clubRed)
+                            if isOpen, let closes = place.closesAt {
+                                Text("· Closes \(closes)")
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.secondary.opacity(0.4))
+                                    .lineLimit(1)
+                            } else if !isOpen, let opens = place.opensAt {
+                                Text("· Opens \(opens)")
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.secondary.opacity(0.4))
+                                    .lineLimit(1)
+                            }
                         }
                     }
 
@@ -146,34 +124,37 @@ struct MapItemBottomSheet: View {
                     // Star row
                     HStack(spacing: 3) {
                         ForEach(1...5, id: \.self) { i in
-                            Image(systemName: Double(i) <= (place.rating ?? 0)
-                                  ? "star.fill" : "star")
+                            Image(systemName: Double(i) <= (place.rating ?? 0) ? "star.fill" : "star")
                                 .font(.system(size: 12))
                                 .foregroundColor(AppColors.primary)
                         }
-                        Text("(\(place.reviewCount ?? 0))")
-                            .font(AppTypography.caption)
-                            .foregroundColor(AppColors.secondary.opacity(0.5))
+                        if let count = place.reviewCount, count > 0 {
+                            Text("(\(count))")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.secondary.opacity(0.5))
+                        }
                     }
 
-                    // Vibe tag
-                    HStack(spacing: AppSpacing.xs) {
-                        Text("Vibe")
-                            .font(AppTypography.caption)
-                            .foregroundColor(AppColors.secondary.opacity(0.4))
-                        Text(place.vibe)
-                            .font(AppTypography.caption)
-                            .foregroundColor(AppColors.primary)
-                            .padding(.horizontal, AppSpacing.xs)
-                            .padding(.vertical, 2)
-                            .background(AppColors.primary.opacity(0.12))
-                            .cornerRadius(AppRadius.sm)
+                    // Vibe tag — only shown when present
+                    if let vibe = place.vibe {
+                        HStack(spacing: AppSpacing.xs) {
+                            Text("Vibe")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.secondary.opacity(0.4))
+                            Text(vibe)
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppColors.primary)
+                                .padding(.horizontal, AppSpacing.xs)
+                                .padding(.vertical, 2)
+                                .background(AppColors.primary.opacity(0.12))
+                                .cornerRadius(AppRadius.sm)
+                        }
                     }
                 }
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.top, AppSpacing.lg)
 
-                // ── CTA ──────────────────────────────────────────────────
+                // ── CTA ───────────────────────────────────────────────────────
                 PrimaryButton(title: "Let's Go!", action: onLetsGo)
                     .padding(.horizontal, AppSpacing.lg)
                     .padding(.top, AppSpacing.xl)
@@ -184,6 +165,17 @@ struct MapItemBottomSheet: View {
         .frame(maxWidth: .infinity)
         .preferredColorScheme(.dark)
     }
+
+    private var photoPlaceholder: some View {
+        ZStack {
+            AppColors.cardSurface.opacity(0.7)
+            Image(systemName: "photo")
+                .font(.system(size: 36))
+                .foregroundColor(AppColors.secondary.opacity(0.10))
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 200)
+    }
 }
 
 #Preview {
@@ -191,11 +183,11 @@ struct MapItemBottomSheet: View {
         .ignoresSafeArea()
         .sheet(isPresented: .constant(true)) {
             MapItemBottomSheet(
-                place: MapItem.mock(category: .event, vibe: "Chill"),
+                place: MapItem.mock(category: .bar, vibe: "Chill"),
                 isExpanded: false,
                 onLetsGo: {}
             )
-            .presentationDetents([.height(380), .large])
+            .presentationDetents([.height(300), .large])
             .presentationDragIndicator(.visible)
             .environment(LocationManager())
         }

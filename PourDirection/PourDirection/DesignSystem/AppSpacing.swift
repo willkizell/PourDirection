@@ -39,6 +39,9 @@ struct AppSpacing {
 
     /// Spacing between icon/image and adjacent label
     static let iconLabelSpacing: CGFloat = xs
+
+    /// Slightly larger vertical padding for prominent buttons
+    static let buttonVerticalLg: CGFloat = 20
 }
 
 // MARK: - App Corner Radius
