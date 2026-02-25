@@ -37,10 +37,17 @@ struct SavedView: View {
     private let adBannerHeight: CGFloat = 50 + (AppSpacing.xs * 2)
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             AppColors.gradientBackground
                 .ignoresSafeArea()
 
+            // ── Empty state — centered in full screen, behind header ──────
+            if displayedPlaces.isEmpty {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+
+            // ── Header + list — on top of empty state ─────────────────────
             VStack(spacing: 0) {
 
                 // ── Header ────────────────────────────────────────────────
@@ -62,19 +69,23 @@ struct SavedView: View {
                                     filter = option
                                 }
                             }) {
-                                Text(option.rawValue)
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(
-                                        filter == option
-                                            ? AppColors.background
-                                            : AppColors.secondary.opacity(0.5)
-                                    )
-                                    .padding(.horizontal, AppSpacing.sm)
-                                    .padding(.vertical, 5)
-                                    .background(
-                                        Capsule()
-                                            .fill(filter == option ? AppColors.primary : Color.clear)
-                                    )
+                                HStack(spacing: 4) {
+                                    Image(systemName: option == .all ? "scope" : "figure.walk")
+                                        .font(.system(size: 11, weight: .medium))
+                                    Text(option.rawValue)
+                                        .font(AppTypography.caption)
+                                }
+                                .foregroundColor(
+                                    filter == option
+                                        ? AppColors.background
+                                        : AppColors.secondary.opacity(0.5)
+                                )
+                                .padding(.horizontal, AppSpacing.sm)
+                                .padding(.vertical, 5)
+                                .background(
+                                    Capsule()
+                                        .fill(filter == option ? AppColors.primary : Color.clear)
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -87,14 +98,9 @@ struct SavedView: View {
                 .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                 .padding(.top, AppSpacing.lg)
                 .padding(.bottom, AppSpacing.md)
-                .background(AppColors.background.ignoresSafeArea(edges: .top))
 
-                // ── Content ───────────────────────────────────────────────
-                if displayedPlaces.isEmpty {
-                    Spacer()
-                    emptyState
-                    Spacer()
-                } else {
+                // ── List content ──────────────────────────────────────────
+                if !displayedPlaces.isEmpty {
                     ScrollView(showsIndicators: false) {
                         LazyVStack(spacing: AppSpacing.sm) {
                             ForEach(displayedPlaces) { saved in
@@ -113,18 +119,21 @@ struct SavedView: View {
     // MARK: - Saved Row
 
     private func savedRow(_ saved: SavedPlace) -> some View {
-        Button(action: {
+        let accent = saved.category?.color ?? AppColors.primary
+        let dist   = saved.distance(from: locationManager.currentLocation)
+        let isWalking = dist.map { $0 <= DistancePreferences.shared.walkingDistanceMeters } ?? false
+
+        return Button(action: {
             HapticManager.shared.heavy()
             onLetsGo(saved.toPlace())
         }) {
             HStack(spacing: AppSpacing.sm) {
 
-                // Category dot
+                // Category dot — vertically centered
                 Circle()
-                    .fill(saved.category?.color ?? AppColors.primary)
+                    .fill(accent)
                     .frame(width: 8, height: 8)
-                    .padding(.top, 2)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                    .frame(maxHeight: .infinity)
 
                 // Info
                 VStack(alignment: .leading, spacing: 3) {
@@ -144,17 +153,21 @@ struct SavedView: View {
                         if let category = saved.category {
                             Text(category.rawValue)
                                 .font(AppTypography.caption)
-                                .foregroundColor(category.color.opacity(0.8))
+                                .foregroundColor(accent.opacity(0.8))
                         }
 
-                        let dist = saved.distance(from: locationManager.currentLocation)
                         if let dist {
                             Text("·")
                                 .font(AppTypography.caption)
                                 .foregroundColor(AppColors.secondary.opacity(0.3))
-                            Text(Place.formatDistance(dist))
-                                .font(AppTypography.caption)
-                                .foregroundColor(AppColors.secondary.opacity(0.45))
+                            HStack(spacing: 3) {
+                                Image(systemName: isWalking ? "figure.walk" : "scope")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(accent.opacity(0.7))
+                                Text(Place.formatDistance(dist))
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.secondary.opacity(0.45))
+                            }
                         }
 
                         if let rating = saved.rating {
@@ -164,7 +177,7 @@ struct SavedView: View {
                             HStack(spacing: 3) {
                                 Image(systemName: "star.fill")
                                     .font(.system(size: 9))
-                                    .foregroundColor(AppColors.primary)
+                                    .foregroundColor(accent)
                                 Text(String(format: "%.1f", rating))
                                     .font(AppTypography.caption)
                                     .foregroundColor(AppColors.secondary.opacity(0.45))
@@ -184,7 +197,7 @@ struct SavedView: View {
                 }) {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(AppColors.primary)
+                        .foregroundColor(accent)
                 }
                 .buttonStyle(.plain)
             }

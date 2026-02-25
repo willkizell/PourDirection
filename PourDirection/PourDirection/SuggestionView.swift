@@ -18,19 +18,22 @@ struct SuggestionView: View {
 
     let mode: Mode
     let onLetsGo: (Place) -> Void
+    let onAccentChange: ((Color) -> Void)?
 
-    init(category: PlaceCategory, onLetsGo: @escaping (Place) -> Void) {
+    init(category: PlaceCategory, onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil) {
         self.mode = .category(category)
         self.onLetsGo = onLetsGo
+        self.onAccentChange = onAccentChange
     }
 
-    static func mixed(onLetsGo: @escaping (Place) -> Void) -> SuggestionView {
-        SuggestionView(mode: .mixed, onLetsGo: onLetsGo)
+    static func mixed(onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil) -> SuggestionView {
+        SuggestionView(mode: .mixed, onLetsGo: onLetsGo, onAccentChange: onAccentChange)
     }
 
-    private init(mode: Mode, onLetsGo: @escaping (Place) -> Void) {
+    private init(mode: Mode, onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil) {
         self.mode = mode
         self.onLetsGo = onLetsGo
+        self.onAccentChange = onAccentChange
     }
 
     @Environment(LocationManager.self) private var locationManager
@@ -68,6 +71,11 @@ struct SuggestionView: View {
         return nil
     }
 
+    /// Accent color — matches current card's category. Falls back to brand for mixed before load.
+    private var accent: Color {
+        activeCategory?.color ?? AppColors.primary
+    }
+
     private var headerSubtitle: String {
         guard let category = activeCategory else { return "something fun?" }
         switch category {
@@ -96,9 +104,10 @@ struct SuggestionView: View {
                         .lineLimit(1)
                     Text(headerSubtitle)
                         .font(AppTypography.titleSmallLarge)
-                        .foregroundColor(AppColors.primary)
+                        .foregroundColor(accent)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
+                        .animation(.easeInOut(duration: 0.25), value: activeCategory)
                 }
                 .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                 .padding(.top, AppSpacing.xxl)
@@ -166,7 +175,7 @@ struct SuggestionView: View {
                 // ── Bottom Actions ────────────────────────────────────────────
                 VStack(spacing: AppSpacing.sm) {
                     if let item = currentItem {
-                        PrimaryButton(title: "Let's Go") { onLetsGo(item.place) }
+                        PrimaryButton(title: "Let's Go", color: accent) { onLetsGo(item.place) }
                     } else if !items.isEmpty {
                         Button(action: {
                             isReversing = false
@@ -190,12 +199,18 @@ struct SuggestionView: View {
         .onAppear {
             locationManager.requestPermission()
             locationManager.startUpdating()
+            // Fire initial accent for single-category modes
+            onAccentChange?(accent)
         }
         .task { await load() }
         // One-shot retry: if location wasn't ready when .task fired, load once it arrives
         .onChange(of: locationManager.currentLocation) { _, newLocation in
             guard newLocation != nil, !hasLoaded, !isLoading else { return }
             Task { await load() }
+        }
+        // Notify parent when accent changes (mixed mode swiping, or after load)
+        .onChange(of: currentIndex) { _, _ in
+            onAccentChange?(accent)
         }
     }
 
@@ -246,7 +261,7 @@ struct SuggestionView: View {
                     }) {
                         Image(systemName: savedManager.isSaved(place) ? "heart.fill" : "heart")
                             .font(.system(size: 20, weight: .regular))
-                            .foregroundColor(savedManager.isSaved(place) ? AppColors.primary : AppColors.secondary.opacity(0.35))
+                            .foregroundColor(savedManager.isSaved(place) ? accent : AppColors.secondary.opacity(0.35))
                             .scaleEffect(savedManager.isSaved(place) ? 1.15 : 1.0)
                     }
                     .buttonStyle(.plain)
@@ -265,7 +280,7 @@ struct SuggestionView: View {
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
                                 .font(.system(size: 11))
-                                .foregroundColor(AppColors.primary)
+                                .foregroundColor(accent)
                             Text(String(format: "%.1f", rating))
                                 .font(AppTypography.caption)
                                 .foregroundColor(AppColors.secondary.opacity(0.7))
@@ -278,7 +293,7 @@ struct SuggestionView: View {
                     HStack(spacing: 4) {
                         Image(systemName: distIcon)
                             .font(.system(size: 11))
-                            .foregroundColor(AppColors.primary)
+                            .foregroundColor(accent)
                         Text(Place.formatDistance(dist))
                             .font(AppTypography.caption)
                             .foregroundColor(AppColors.secondary.opacity(0.7))
@@ -298,11 +313,11 @@ struct SuggestionView: View {
                 if let isOpen = place.isOpenNow {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(isOpen ? AppColors.primary : AppColors.clubRed)
+                            .fill(isOpen ? accent : AppColors.clubRed)
                             .frame(width: 6, height: 6)
                         Text(isOpen ? "Open" : "Closed")
                             .font(AppTypography.caption)
-                            .foregroundColor(isOpen ? AppColors.primary : AppColors.clubRed)
+                            .foregroundColor(isOpen ? accent : AppColors.clubRed)
                         if isOpen, let closes = place.closesAt {
                             Text("· Closes \(closes)")
                                 .font(AppTypography.caption)

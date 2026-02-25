@@ -1,0 +1,59 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "Group 126 3.png",
+          "name" : "Group 126 3",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              -8.828125
+            ]
+          }
+        },
+        {
+          "image-name" : "Group 101 2.png",
+          "name" : "Group 101 2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              324.640625
+            ]
+          }
+        },
+        {
+          "glass" : false,
+          "image-name" : "Ellipse 148 2.png",
+          "name" : "Ellipse 148 2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

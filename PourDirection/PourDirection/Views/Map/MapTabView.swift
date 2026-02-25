@@ -12,6 +12,7 @@ import MapKit
 struct MapTabView: View {
 
     let onLetsGo: (MapItem) -> Void
+    var onAccentChange: ((Color) -> Void)? = nil
 
     @Environment(LocationManager.self) private var locationManager
 
@@ -228,8 +229,10 @@ struct MapTabView: View {
         }
         // Reset detent to compact when a new pin is selected
         .onChange(of: selectedItem?.id) { _, newID in
-            guard newID != nil, let place = selectedItem else { return }
-            clampDetent(for: place)
+            if let newID, let place = selectedItem {
+                clampDetent(for: place)
+            }
+            onAccentChange?(controlTint)
         }
         .sheet(isPresented: $showDistanceSheet, onDismiss: {
             // Refetch with updated distance preferences

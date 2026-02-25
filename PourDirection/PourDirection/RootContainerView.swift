@@ -30,6 +30,8 @@ struct RootContainerView: View {
     @State private var navigationPath               = NavigationPath()
     // Drives fullScreenCover via item: — avoids the isPresented timing bug.
     @State private var compassPresentation: Place?  = nil
+    /// Accent color driven by the current content — flows to tab bar.
+    @State private var tabBarAccent: Color          = AppColors.primary
 
     private var shouldHideAdBanner: Bool {
         if selectedTab == .profile { return true }
@@ -63,6 +65,7 @@ struct RootContainerView: View {
                 }
                 CustomTabBar(
                     selectedTab:  $selectedTab,
+                    accentColor:  tabBarAccent,
                     onCompassTap: handleCompassTap,
                     onTabTap: { tapped in
                         if tapped == selectedTab {
@@ -92,10 +95,17 @@ struct RootContainerView: View {
                 }
             )
         }
-        // Reset push stack when the user switches tabs
+        // Reset push stack and accent when the user switches tabs
         .onChange(of: selectedTab) { _ in
             navigationPath = NavigationPath()
             activeRoute    = nil
+            tabBarAccent   = AppColors.primary
+        }
+        // Reset accent to brand when user swipes back to root
+        .onChange(of: navigationPath) { _, newPath in
+            if newPath.isEmpty {
+                tabBarAccent = AppColors.primary
+            }
         }
         .preferredColorScheme(.dark)
     }
@@ -117,15 +127,18 @@ struct RootContainerView: View {
                 compassPresentation = place
             })
         case .map:
-            MapTabView(onLetsGo: { mapItem in
-                compassPresentation = Place(
-                    id:               mapItem.id,
-                    name:             mapItem.name,
-                    formattedAddress: nil,
-                    coordinate:       mapItem.coordinate,
-                    rating:           mapItem.rating
-                )
-            })
+            MapTabView(
+                onLetsGo: { mapItem in
+                    compassPresentation = Place(
+                        id:               mapItem.id,
+                        name:             mapItem.name,
+                        formattedAddress: nil,
+                        coordinate:       mapItem.coordinate,
+                        rating:           mapItem.rating
+                    )
+                },
+                onAccentChange: { tabBarAccent = $0 }
+            )
         case .profile:
             ProfileView(
                 onHelp: { navigationPath.append(AppRoute.help) }
@@ -143,12 +156,16 @@ struct RootContainerView: View {
                 category: category,
                 onLetsGo: { place in
                     compassPresentation = place
-                }
+                },
+                onAccentChange: { tabBarAccent = $0 }
             )
         case .suggestionsMixed:
-            SuggestionView.mixed { place in
-                compassPresentation = place
-            }
+            SuggestionView.mixed(
+                onLetsGo: { place in
+                    compassPresentation = place
+                },
+                onAccentChange: { tabBarAccent = $0 }
+            )
         case .compass(let place):
             // Compass is presented via fullScreenCover(item:), not as a pushed destination.
             let _ = place

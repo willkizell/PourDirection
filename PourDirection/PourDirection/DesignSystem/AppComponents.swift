@@ -367,6 +367,7 @@ enum AppTab: Int, CaseIterable {
 private struct TabBarItem: View {
     let tab: AppTab
     @Binding var selectedTab: AppTab
+    var accentColor: Color = AppColors.primary
     var onTap: () -> Void = {}
 
     private var isSelected: Bool { selectedTab == tab }
@@ -379,11 +380,12 @@ private struct TabBarItem: View {
         }) {
             Image(systemName: isSelected ? tab.selectedIcon : tab.defaultIcon)
                 .font(.system(size: 24))
-                .foregroundColor(isSelected ? AppColors.primary : AppColors.secondary.opacity(0.4))
+                .foregroundColor(isSelected ? accentColor : AppColors.secondary.opacity(0.4))
                 .shadow(
-                    color: isSelected ? AppColors.primary.opacity(0.5) : .clear,
+                    color: isSelected ? accentColor.opacity(0.5) : .clear,
                     radius: 6, x: 0, y: 0
                 )
+                .animation(.easeInOut(duration: 0.25), value: accentColor.description)
                 .padding(.top, 4)
             .frame(maxWidth: .infinity)
         }
@@ -408,6 +410,7 @@ struct CustomTabBar: View {
     static let height: CGFloat = 52
 
     @Binding var selectedTab: AppTab
+    var accentColor: Color = AppColors.primary
     var onCompassTap: () -> Void = {}
     var onTabTap: (AppTab) -> Void = { _ in }
 
@@ -429,8 +432,8 @@ struct CustomTabBar: View {
 
             // ── All Five Slots ──────────────────────────────────────────────
             HStack(spacing: 0) {
-                TabBarItem(tab: .explore, selectedTab: $selectedTab, onTap: { onTabTap(.explore) })
-                TabBarItem(tab: .saved,   selectedTab: $selectedTab, onTap: { onTabTap(.saved) })
+                TabBarItem(tab: .explore, selectedTab: $selectedTab, accentColor: accentColor, onTap: { onTabTap(.explore) })
+                TabBarItem(tab: .saved,   selectedTab: $selectedTab, accentColor: accentColor, onTap: { onTabTap(.saved) })
 
                 // ── Center Compass Slot ─────────────────────────────────────
                 Button(action: {
@@ -439,21 +442,22 @@ struct CustomTabBar: View {
                 }) {
                     ZStack {
                         Circle()
-                            .fill(AppColors.primary)
+                            .fill(accentColor)
                             .frame(width: compassCircle, height: compassCircle)
-                            .shadow(color: AppColors.primary.opacity(0.45), radius: 10, x: 0, y: 0)
+                            .shadow(color: accentColor.opacity(0.45), radius: 10, x: 0, y: 0)
 
                         Image(systemName: "location.north.fill")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(AppColors.background)
                             .rotationEffect(.degrees(45))
                     }
+                    .animation(.easeInOut(duration: 0.25), value: accentColor.description)
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
 
-                TabBarItem(tab: .map,     selectedTab: $selectedTab, onTap: { onTabTap(.map) })
-                TabBarItem(tab: .profile, selectedTab: $selectedTab, onTap: { onTabTap(.profile) })
+                TabBarItem(tab: .map,     selectedTab: $selectedTab, accentColor: accentColor, onTap: { onTabTap(.map) })
+                TabBarItem(tab: .profile, selectedTab: $selectedTab, accentColor: accentColor, onTap: { onTabTap(.profile) })
             }
             .padding(.horizontal, AppSpacing.xs)
             .frame(height: barHeight)
