@@ -54,7 +54,7 @@ struct SuggestionView: View {
     private let cardMaxHeight: CGFloat       = 420
     private let cardPhotoHeight: CGFloat     = 200
     private var cardWidth: CGFloat {
-        min(340, UIScreen.main.bounds.width - (AppSpacing.screenHorizontalPadding * 2))
+        UIScreen.main.bounds.width - (AppSpacing.screenHorizontalPadding * 2)
     }
 
     private var currentItem: SuggestionItem? {
@@ -323,9 +323,7 @@ struct SuggestionView: View {
             .layoutPriority(1)
         }
                 .frame(width: cardWidth)
-                .frame(width: cardWidth)
-                        .frame(maxHeight: cardMaxHeight, alignment: .top) // Forces the content to stay pinned to the absolute top
-                // 1. Apply the background and corners directly to the strict card width first
+                .frame(maxHeight: cardMaxHeight, alignment: .top)
                 .background(AppColors.cardSurface.opacity(0.92))
                 .cornerRadius(AppRadius.lg)
                 .overlay(
@@ -333,13 +331,8 @@ struct SuggestionView: View {
                         .stroke(AppColors.secondary.opacity(0.1), lineWidth: 0.5)
                 )
                 .shadow(color: Color.black.opacity(0.5), radius: AppSpacing.sm, x: 0, y: 4)
-                        // 1. Move padding HERE so it pushes against the screen edges, not the card itself
-                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
-                        // 2. Now define the card width and centering
-                        .frame(width: cardWidth)
-                        .frame(maxHeight: cardMaxHeight, alignment: .top)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .offset(x: dragOffset)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .offset(x: dragOffset)
         .rotationEffect(.degrees(Double(dragOffset / 30)))
         .gesture(
             DragGesture()
