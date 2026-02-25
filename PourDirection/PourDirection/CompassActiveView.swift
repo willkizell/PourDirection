@@ -294,7 +294,7 @@ struct CompassActiveView: View {
     // MARK: - Ride Button
 
     private func updateRideButtonVisibility() {
-        let shouldShow = (distanceMeters ?? 0) > 2500
+        let shouldShow = (distanceMeters ?? 0) > DistancePreferences.shared.walkingDistanceMeters
         guard shouldShow != showRideButton else { return }
         withAnimation(.easeInOut(duration: 0.35)) {
             showRideButton = shouldShow

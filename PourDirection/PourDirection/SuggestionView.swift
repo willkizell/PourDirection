@@ -48,7 +48,8 @@ struct SuggestionView: View {
     @State private var hasLoaded:    Bool    = false  // prevents onChange from re-firing after load
     @State private var isReversing:  Bool    = false  // controls card transition direction
     @State private var dragOffset:   CGFloat = 0      // horizontal drag for snap feel
-    private let savedManager = SavedPlacesManager.shared
+    private let savedManager  = SavedPlacesManager.shared
+    private let distancePrefs = DistancePreferences.shared
     private let adBannerHeight: CGFloat      = 50 + (AppSpacing.xs * 2)
     private let cardMaxHeight: CGFloat       = 420
     private let cardPhotoHeight: CGFloat     = 200
@@ -203,25 +204,29 @@ struct SuggestionView: View {
     private func placeCard(_ place: Place, category: PlaceCategory) -> some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            
             // ── Hero Photo ────────────────────────────────────────────────────
-            AsyncImage(url: place.photoURL) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: cardWidth, height: cardPhotoHeight)
-                        .clipped()
-                case .failure:
-                    photoPlaceholder
-                        .frame(width: cardWidth, height: cardPhotoHeight)
-                default:
-                    photoPlaceholder
-                        .frame(width: cardWidth, height: cardPhotoHeight)
-                        .overlay(ProgressView().tint(AppColors.primary))
-                }
-            }
-            .layoutPriority(0)
+                        AsyncImage(url: place.photoURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity) // Replaced strict width to force edge-to-edge
+                                    .frame(height: cardPhotoHeight)
+                                    .clipped()
+                            case .failure:
+                                photoPlaceholder
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: cardPhotoHeight)
+                            default:
+                                photoPlaceholder
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: cardPhotoHeight)
+                                    .overlay(ProgressView().tint(AppColors.primary))
+                            }
+                        }
+                        .layoutPriority(0)
 
             // ── Info ──────────────────────────────────────────────────────────
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
@@ -268,8 +273,10 @@ struct SuggestionView: View {
                     }
 
                     let dist = place.distance(from: locationManager.currentLocation)
+                    let beyondWalking = (dist ?? 0) > distancePrefs.walkingDistanceMeters
+                    let distIcon = (category == .club && beyondWalking) ? "car.fill" : "figure.walk"
                     HStack(spacing: 4) {
-                        Image(systemName: "figure.walk")
+                        Image(systemName: distIcon)
                             .font(.system(size: 11))
                             .foregroundColor(AppColors.primary)
                         Text(Place.formatDistance(dist))
@@ -316,7 +323,8 @@ struct SuggestionView: View {
             .layoutPriority(1)
         }
                 .frame(width: cardWidth)
-                .frame(maxHeight: cardMaxHeight)
+                .frame(width: cardWidth)
+                        .frame(maxHeight: cardMaxHeight, alignment: .top) // Forces the content to stay pinned to the absolute top
                 // 1. Apply the background and corners directly to the strict card width first
                 .background(AppColors.cardSurface.opacity(0.92))
                 .cornerRadius(AppRadius.lg)
@@ -325,10 +333,13 @@ struct SuggestionView: View {
                         .stroke(AppColors.secondary.opacity(0.1), lineWidth: 0.5)
                 )
                 .shadow(color: Color.black.opacity(0.5), radius: AppSpacing.sm, x: 0, y: 4)
-                // 2. THEN expand the container to fill the screen so centering and swiping still work perfectly
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.horizontal, AppSpacing.screenHorizontalPadding)
-        .offset(x: dragOffset)
+                        // 1. Move padding HERE so it pushes against the screen edges, not the card itself
+                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+                        // 2. Now define the card width and centering
+                        .frame(width: cardWidth)
+                        .frame(maxHeight: cardMaxHeight, alignment: .top)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .offset(x: dragOffset)
         .rotationEffect(.degrees(Double(dragOffset / 30)))
         .gesture(
             DragGesture()
@@ -406,10 +417,15 @@ struct SuggestionView: View {
     }
 
     private func fetchPlaces(for category: PlaceCategory, at loc: CLLocation) async throws -> [Place] {
+        let searchRadius = category == .club
+            ? distancePrefs.searchAreaMeters
+            : distancePrefs.walkingDistanceMeters
+
         var fetched = try await SupabaseManager.shared.fetchNearbyPlaces(
             lat: loc.coordinate.latitude,
             lng: loc.coordinate.longitude,
-            type: resolvedTypeString(for: category)
+            type: resolvedTypeString(for: category),
+            radius: searchRadius
         )
 
         if category == .club {
@@ -419,9 +435,10 @@ struct SuggestionView: View {
             }
         }
 
-        // Text Search doesn't enforce a hard radius — trim dispensary results to 3 km.
+        // Text Search doesn't enforce a hard radius — trim dispensary results.
         if category == .dispensary {
-            fetched = fetched.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= 3000 }
+            let maxDist = max(distancePrefs.walkingDistanceMeters, 3000)
+            fetched = fetched.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= maxDist }
         }
 
         return fetched.sorted {
@@ -461,6 +478,19 @@ struct SuggestionView: View {
         return result
     }
 
+    /// Max distance allowed in SuggestionView for a given category.
+    /// Bars/restaurants/dispensaries → walking. Clubs → driving.
+    private func suggestionMaxDistance(for category: PlaceCategory) -> Double {
+        category == .club
+            ? distancePrefs.searchAreaMeters
+            : distancePrefs.walkingDistanceMeters
+    }
+
+    private func filterByDistance(_ places: [Place], category: PlaceCategory, from loc: CLLocation) -> [Place] {
+        let maxDist = suggestionMaxDistance(for: category)
+        return places.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= maxDist }
+    }
+
     private func load() async {
         guard let loc = locationManager.currentLocation else { return }
         isLoading    = true
@@ -470,7 +500,8 @@ struct SuggestionView: View {
             case .category(let category):
                 let fetched = try await fetchPlaces(for: category, at: loc)
                 let open = fetched.filter { $0.isOpenNow != false }
-                items = open.map {
+                let filtered = filterByDistance(open, category: category, from: loc)
+                items = filtered.map {
                     SuggestionItem(
                         id: "\(category.rawValue)-\($0.id)",
                         place: $0,
@@ -496,7 +527,12 @@ struct SuggestionView: View {
                 }
 
                 let openBuckets = buckets.mapValues { $0.filter { $0.isOpenNow != false } }
-                items = interleavedItems(from: openBuckets)
+                // Apply per-category distance caps
+                var cappedBuckets: [PlaceCategory: [Place]] = [:]
+                for (category, places) in openBuckets {
+                    cappedBuckets[category] = filterByDistance(places, category: category, from: loc)
+                }
+                items = interleavedItems(from: cappedBuckets)
             }
             currentIndex = 0
         } catch {

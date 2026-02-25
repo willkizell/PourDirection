@@ -49,17 +49,20 @@ struct PrimaryButton: View {
     let title: String
     let iconName: String?
     let verticalPadding: CGFloat
+    let color: Color
     let action: () -> Void
 
     init(
         title: String,
         iconName: String? = nil,
         verticalPadding: CGFloat = AppSpacing.md,
+        color: Color = AppColors.primary,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.iconName = iconName
         self.verticalPadding = verticalPadding
+        self.color = color
         self.action = action
     }
 
@@ -79,7 +82,7 @@ struct PrimaryButton: View {
             .foregroundColor(AppColors.secondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, verticalPadding)
-            .background(AppColors.primary)
+            .background(color)
             .clipShape(Capsule())
         }
     }

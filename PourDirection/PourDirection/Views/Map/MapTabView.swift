@@ -28,6 +28,13 @@ struct MapTabView: View {
 
     @State private var places: [MapItem] = []
     @State private var hasLoadedPlaces = false
+    @State private var showDistanceSheet = false
+    private let distancePrefs = DistancePreferences.shared
+
+    /// Accent color for map controls — matches selected pin's category, or brand default.
+    private var controlTint: Color {
+        selectedItem?.category.color ?? AppColors.primary
+    }
 
     private func compactHeight(for place: MapItem) -> CGFloat { 300 }
 
@@ -81,7 +88,7 @@ struct MapTabView: View {
             ? sheetPadding
             : noSheetPadding
 
-        ZStack(alignment: .bottomTrailing) {
+        ZStack {
             // ── Map ─────────────────────────────────────────────────────────
             Map(position: $cameraPosition) {
                 UserAnnotation()
@@ -132,35 +139,62 @@ struct MapTabView: View {
             .ignoresSafeArea()
             .allowsHitTesting(false)
 
-            // ── Recenter button (bottom-trailing) ─────────────────────────
-            Button {
-                if let loc = locationManager.currentLocation {
-                    withAnimation(.easeInOut(duration: 0.4)) {
-                        cameraPosition = .region(
-                            MKCoordinateRegion(
-                                center: loc.coordinate,
-                                span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)
-                            )
-                        )
+            // ── Distance info pill (bottom-leading) ─────────────────────────
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer()
+                Button {
+                    if selectedItem != nil {
+                        withAnimation(.easeInOut(duration: 0.2)) { selectedItem = nil }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                            showDistanceSheet = true
+                        }
+                    } else {
+                        showDistanceSheet = true
                     }
+                } label: {
+                    distanceInfoPill
                 }
-            } label: {
-                Image(systemName: "location.fill")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(AppColors.primary)
-                    .frame(width: 40, height: 40)
-                    .background(AppColors.cardSurface.opacity(0.92))
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(AppColors.primary.opacity(0.25), lineWidth: 0.5)
-                    )
-                    .shadow(color: Color.black.opacity(0.4), radius: 4, y: 2)
+                .buttonStyle(.plain)
+                .padding(.leading, AppSpacing.lg)
+                .padding(.bottom, recenterBottomPadding)
+                .animation(.easeInOut(duration: 0.3), value: selectedItem != nil)
             }
-            .buttonStyle(.plain)
-            .padding(.trailing, AppSpacing.lg)
-            .padding(.bottom, recenterBottomPadding)
-            .animation(.easeInOut(duration: 0.3), value: selectedItem != nil)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // ── Recenter button (bottom-trailing) ─────────────────────────
+            VStack {
+                Spacer()
+                Button {
+                    if let loc = locationManager.currentLocation {
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            cameraPosition = .region(
+                                MKCoordinateRegion(
+                                    center: loc.coordinate,
+                                    span: MKCoordinateSpan(latitudeDelta: 0.025, longitudeDelta: 0.025)
+                                )
+                            )
+                        }
+                    }
+                } label: {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(controlTint)
+                        .frame(width: 44, height: 44)
+                        .background(AppColors.cardSurface.opacity(0.92))
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(controlTint.opacity(0.25), lineWidth: 0.5)
+                        )
+                        .shadow(color: Color.black.opacity(0.4), radius: 4, y: 2)
+                        .animation(.easeInOut(duration: 0.25), value: selectedItem?.id)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, AppSpacing.lg)
+                .padding(.bottom, recenterBottomPadding)
+                .animation(.easeInOut(duration: 0.3), value: selectedItem != nil)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .onAppear {
             locationManager.requestPermission()
@@ -197,9 +231,50 @@ struct MapTabView: View {
             guard newID != nil, let place = selectedItem else { return }
             clampDetent(for: place)
         }
+        .sheet(isPresented: $showDistanceSheet, onDismiss: {
+            // Refetch with updated distance preferences
+            Task { await fetchPlaces() }
+        }) {
+            DistancePreferencesView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         } // GeometryReader
         .ignoresSafeArea()
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    // MARK: - Distance Info Pill
+
+    private var distanceInfoPill: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Image(systemName: "figure.walk")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(controlTint)
+                Text(DistancePreferences.formatMetersAsDistance(distancePrefs.walkingDistanceMeters))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppColors.secondary.opacity(0.6))
+            }
+            HStack(spacing: 5) {
+                Image(systemName: "scope")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(controlTint)
+                Text(DistancePreferences.formatMetersAsDistance(distancePrefs.searchAreaMeters))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppColors.secondary.opacity(0.6))
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(AppColors.cardSurface.opacity(0.92))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(controlTint.opacity(0.15), lineWidth: 0.5)
+        )
+        .shadow(color: Color.black.opacity(0.4), radius: 4, y: 2)
+        .animation(.easeInOut(duration: 0.25), value: selectedItem?.id)
     }
 
     // MARK: - Data Fetch
@@ -210,35 +285,59 @@ struct MapTabView: View {
         let lat = loc.coordinate.latitude
         let lng = loc.coordinate.longitude
 
-        // Fetch all four categories in parallel
-        async let barResults        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar")
-        async let restaurantResults = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant")
-        async let clubResults       = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club")
-        async let dispoResults      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary")
+        let walkRadius   = distancePrefs.walkingDistanceMeters
+        let searchRadius = distancePrefs.searchAreaMeters
 
+        // Two-pass fetch: walking radius (nearby) + search area (wide).
+        // Google returns max 20 per request — a large radius spreads results
+        // across the whole area, missing nearby venues. The walking-radius
+        // fetch guarantees close-by results always appear.
+        async let nearbyBars        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",        radius: walkRadius)
+        async let nearbyRestaurants = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",  radius: walkRadius)
+        async let nearbyDispos      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",  radius: walkRadius)
+        async let wideBars          = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",        radius: searchRadius)
+        async let wideRestaurants   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",  radius: searchRadius)
+        async let wideClubs         = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",  radius: searchRadius)
+        async let wideDispos        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",  radius: searchRadius)
+
+        var seen = Set<String>()
         var combined: [MapItem] = []
 
-        if let bars = try? await barResults {
-            combined += bars.map { MapItem(from: $0, category: .bar) }
+        func addUnique(_ places: [Place], category: PlaceCategory) {
+            for place in places {
+                guard !seen.contains(place.id) else { continue }
+                seen.insert(place.id)
+                combined.append(MapItem(from: place, category: category))
+            }
         }
-        if let restaurants = try? await restaurantResults {
-            combined += restaurants.map { MapItem(from: $0, category: .restaurant) }
+
+        // Nearby results first — they take priority
+        if let bars = try? await nearbyBars           { addUnique(bars, category: .bar) }
+        if let restaurants = try? await nearbyRestaurants { addUnique(restaurants, category: .restaurant) }
+        if let dispos = try? await nearbyDispos {
+            let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
+            addUnique(filtered, category: .dispensary)
         }
-        if let clubs = try? await clubResults {
+
+        // Wide results — fill in farther venues
+        if let bars = try? await wideBars             { addUnique(bars, category: .bar) }
+        if let restaurants = try? await wideRestaurants { addUnique(restaurants, category: .restaurant) }
+        if let clubs = try? await wideClubs {
             let filtered = clubs.filter {
                 let t = Set($0.types)
                 return t.contains("night_club") && !t.contains("restaurant")
             }
-            combined += filtered.map { MapItem(from: $0, category: .club) }
+            addUnique(filtered, category: .club)
         }
-        if let dispos = try? await dispoResults {
-            let filtered = dispos.filter {
-                ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= 3000
-            }
-            combined += filtered.map { MapItem(from: $0, category: .dispensary) }
+        if let dispos = try? await wideDispos {
+            let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
+            addUnique(filtered, category: .dispensary)
         }
 
-        places = combined
+        // Final filter to search area
+        places = combined.filter {
+            ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius
+        }
 
         // Center map on user location once places arrive
         withAnimation(.easeInOut(duration: 0.5)) {

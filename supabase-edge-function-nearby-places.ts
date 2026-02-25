@@ -13,7 +13,11 @@ interface TypeConfig {
 function resolveTypeConfig(type: string): TypeConfig {
   switch (type) {
     case "bar":
-      return { includedTypes: ["bar"], radius: 1500 };
+      return {
+        includedTypes: ["bar"],
+        excludedTypes: ["community_center", "sports_club", "fitness_center"],
+        radius: 1500,
+      };
 
     case "restaurant":
       return {
@@ -54,15 +58,23 @@ function resolveTypeConfig(type: string): TypeConfig {
 
 serve(async (req) => {
   try {
-    const { lat, lng, type } = await req.json();
+    const { lat, lng, type, radius: clientRadius } = await req.json();
 
     const resolvedType =
       typeof type === "string" && type.trim() !== ""
         ? type.trim()
         : "bar";
 
-    const { includedTypes, excludedTypes, openNow, radius, debug } =
-      resolveTypeConfig(resolvedType);
+    const config = resolveTypeConfig(resolvedType);
+    const { includedTypes, excludedTypes, openNow, debug } = config;
+
+    // Use client-provided radius if present, otherwise fall back to defaults.
+    // iOS sends walkingDistanceMeters for suggestion bars/restaurants/dispensaries,
+    // searchAreaMeters for clubs and all map categories.
+    const radius =
+      typeof clientRadius === "number" && clientRadius > 0
+        ? clientRadius
+        : config.radius;
 
     console.log(`[nearby-places] type received: "${resolvedType}"`);
 
@@ -82,7 +94,7 @@ serve(async (req) => {
         locationBias: {
           circle: {
             center: { latitude: lat, longitude: lng },
-            radius: 3000,
+            radius,
           },
         },
         maxResultCount: 20,

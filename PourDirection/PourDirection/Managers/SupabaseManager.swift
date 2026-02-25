@@ -64,15 +64,17 @@ final class SupabaseManager {
         let lat: Double
         let lng: Double
         let type: String
+        let radius: Double?
     }
 
     /// Fetches nearby places from the "nearby-places" Edge Function.
     /// `type` maps to Google Places API `includedTypes` (e.g. "bar", "restaurant").
+    /// `radius` overrides the server-side default search radius (meters).
     /// Returns decoded `Place` values ready for display.
-    func fetchNearbyPlaces(lat: Double, lng: Double, type: String = "bar") async throws -> [Place] {
+    func fetchNearbyPlaces(lat: Double, lng: Double, type: String = "bar", radius: Double? = nil) async throws -> [Place] {
         let response: NearbyPlacesResponse = try await invokeFunction(
             name: "nearby-places",
-            body: NearbyPlacesPayload(lat: lat, lng: lng, type: type)
+            body: NearbyPlacesPayload(lat: lat, lng: lng, type: type, radius: radius)
         )
         let places = response.places.map { Place(from: $0) }
         if let first = places.first {

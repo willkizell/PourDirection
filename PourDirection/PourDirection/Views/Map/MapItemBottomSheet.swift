@@ -16,6 +16,8 @@ struct MapItemBottomSheet: View {
 
     @Environment(LocationManager.self) private var locationManager
 
+    private var accent: Color { place.category.color }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
@@ -74,7 +76,7 @@ struct MapItemBottomSheet: View {
                         HStack(spacing: 3) {
                             Image(systemName: "star.fill")
                                 .font(.system(size: 11))
-                                .foregroundColor(AppColors.primary)
+                                .foregroundColor(accent)
                             Text(String(format: "%.1f", place.rating ?? 0))
                                 .font(AppTypography.caption)
                                 .foregroundColor(AppColors.secondary.opacity(0.7))
@@ -98,11 +100,11 @@ struct MapItemBottomSheet: View {
                     if let isOpen = place.isOpen {
                         HStack(spacing: 6) {
                             Circle()
-                                .fill(isOpen ? AppColors.primary : AppColors.clubRed)
+                                .fill(isOpen ? accent : AppColors.clubRed)
                                 .frame(width: 6, height: 6)
                             Text(isOpen ? "Open" : "Closed")
                                 .font(AppTypography.caption)
-                                .foregroundColor(isOpen ? AppColors.primary : AppColors.clubRed)
+                                .foregroundColor(isOpen ? accent : AppColors.clubRed)
                             if isOpen, let closes = place.closesAt {
                                 Text("· Closes \(closes)")
                                     .font(AppTypography.caption)
@@ -126,7 +128,7 @@ struct MapItemBottomSheet: View {
                         ForEach(1...5, id: \.self) { i in
                             Image(systemName: Double(i) <= (place.rating ?? 0) ? "star.fill" : "star")
                                 .font(.system(size: 12))
-                                .foregroundColor(AppColors.primary)
+                                .foregroundColor(accent)
                         }
                         if let count = place.reviewCount, count > 0 {
                             Text("(\(count))")
@@ -155,7 +157,7 @@ struct MapItemBottomSheet: View {
                 .padding(.top, AppSpacing.lg)
 
                 // ── CTA ───────────────────────────────────────────────────────
-                PrimaryButton(title: "Let's Go!", action: onLetsGo)
+                PrimaryButton(title: "Let's Go!", color: accent, action: onLetsGo)
                     .padding(.horizontal, AppSpacing.lg)
                     .padding(.top, AppSpacing.xl)
                     .padding(.bottom, AppSpacing.md)

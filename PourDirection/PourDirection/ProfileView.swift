@@ -19,7 +19,8 @@ struct ProfileView: View {
     @Environment(LocationManager.self) private var locationManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var notifStatus: UNAuthorizationStatus = .notDetermined
-    @State private var showUpgradeSheet = false
+    @State private var showUpgradeSheet    = false
+    @State private var showDistanceSheet   = false
 
     let onHelp: () -> Void
 
@@ -101,6 +102,10 @@ struct ProfileView: View {
                             isOn: locationBinding
                         )
 
+                        SettingsNavRow(icon: "figure.walk", title: "Distance Preferences") {
+                            showDistanceSheet = true
+                        }
+
                         // ── Actions ───────────────────────────────────────
                         VStack(spacing: 0) {
                             SettingsNavRow(icon: "crown", title: "Remove Ads") {
@@ -117,6 +122,11 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showUpgradeSheet) {
             UpgradeToProView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showDistanceSheet) {
+            DistancePreferencesView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
