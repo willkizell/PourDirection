@@ -13,6 +13,9 @@ struct MapTabView: View {
 
     let onLetsGo: (MapItem) -> Void
     var onAccentChange: ((Color) -> Void)? = nil
+    var onHomeTap: (() -> Void)? = nil
+
+    private let homeManager = HomeLocationManager.shared
 
     @Environment(LocationManager.self) private var locationManager
 
@@ -108,6 +111,18 @@ struct MapTabView: View {
                                 selectItem(place)
                             }
                         )
+                    }
+                }
+
+                // ── Home pin ─────────────────────────────────────────────
+                if homeManager.isSet,
+                   let lat = homeManager.latitude,
+                   let lng = homeManager.longitude {
+                    Annotation("Home", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng), anchor: .bottom) {
+                        HomePinView()
+                            .highPriorityGesture(
+                                TapGesture().onEnded { onHomeTap?() }
+                            )
                     }
                 }
             }
@@ -295,13 +310,15 @@ struct MapTabView: View {
         // Google returns max 20 per request — a large radius spreads results
         // across the whole area, missing nearby venues. The walking-radius
         // fetch guarantees close-by results always appear.
-        async let nearbyBars        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",        radius: walkRadius)
-        async let nearbyRestaurants = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",  radius: walkRadius)
-        async let nearbyDispos      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",  radius: walkRadius)
-        async let wideBars          = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",        radius: searchRadius)
-        async let wideRestaurants   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",  radius: searchRadius)
-        async let wideClubs         = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",  radius: searchRadius)
-        async let wideDispos        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",  radius: searchRadius)
+        async let nearbyBars        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walkRadius)
+        async let nearbyRestaurants = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",    radius: walkRadius)
+        async let nearbyDispos      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",    radius: walkRadius)
+        async let nearbyLiquor      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store",  radius: walkRadius)
+        async let wideBars          = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: searchRadius)
+        async let wideRestaurants   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",    radius: searchRadius)
+        async let wideClubs         = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",    radius: searchRadius)
+        async let wideDispos        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",    radius: searchRadius)
+        async let wideLiquor        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store",  radius: searchRadius)
 
         var seen = Set<String>()
         var combined: [MapItem] = []
@@ -321,6 +338,10 @@ struct MapTabView: View {
             let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
             addUnique(filtered, category: .dispensary)
         }
+        if let liquor = try? await nearbyLiquor {
+            let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
+            addUnique(filtered, category: .liquorStore)
+        }
 
         // Wide results — fill in farther venues
         if let bars = try? await wideBars             { addUnique(bars, category: .bar) }
@@ -335,6 +356,10 @@ struct MapTabView: View {
         if let dispos = try? await wideDispos {
             let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
             addUnique(filtered, category: .dispensary)
+        }
+        if let liquor = try? await wideLiquor {
+            let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
+            addUnique(filtered, category: .liquorStore)
         }
 
         // Final filter to search area

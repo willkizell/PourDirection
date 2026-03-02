@@ -51,6 +51,10 @@ function resolveTypeConfig(type: string): TypeConfig {
       // Text Search override handles this
       return { radius: 3000 };
 
+    case "liquor_store":
+      // Text Search override handles this
+      return { radius: 3000 };
+
     default:
       return { includedTypes: [type], radius: 1500 };
   }
@@ -86,8 +90,82 @@ serve(async (req) => {
     }
 
     // ============================================
-    // DISPENSARY OVERRIDE USING TEXT SEARCH
+    // TEXT SEARCH OVERRIDES (dispensary, liquor_store)
     // ============================================
+    if (resolvedType === "liquor_store") {
+      const textSearchBody = {
+        textQuery: "liquor store",
+        locationBias: {
+          circle: {
+            center: { latitude: lat, longitude: lng },
+            radius,
+          },
+        },
+        maxResultCount: 20,
+      };
+
+      const textRes = await fetch(
+        "https://places.googleapis.com/v1/places:searchText",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+            "X-Goog-FieldMask": [
+              "places.id",
+              "places.displayName",
+              "places.formattedAddress",
+              "places.location",
+              "places.rating",
+              "places.photos",
+              "places.types",
+              "places.userRatingCount",
+              "places.currentOpeningHours",
+            ].join(","),
+          },
+          body: JSON.stringify(textSearchBody),
+        }
+      );
+
+      const textData = await textRes.json();
+
+      if (!textRes.ok) {
+        console.error("[liquor_store] Google Text Search error:", textData);
+        return new Response(JSON.stringify({ places: [] }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const textPlaces = textData.places ?? [];
+      console.log(
+        `[nearby-places] liquor_store text search returning ${textPlaces.length} places`
+      );
+
+      const mapped = textPlaces.map((place: any) => {
+        const photoName = place.photos?.[0]?.name ?? null;
+        const photoUri = photoName
+          ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&key=${GOOGLE_PLACES_API_KEY}`
+          : undefined;
+
+        return {
+          id: place.id ?? place.displayName?.text,
+          displayName: place.displayName,
+          formattedAddress: place.formattedAddress ?? null,
+          location: place.location,
+          rating: place.rating ?? null,
+          photoUri,
+          types: place.types ?? [],
+          userRatingCount: place.userRatingCount ?? null,
+          isOpenNow: place.currentOpeningHours?.openNow ?? null,
+          weekdayDescriptions: place.currentOpeningHours?.weekdayDescriptions ?? null,
+        };
+      });
+
+      return new Response(JSON.stringify({ places: mapped }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (resolvedType === "dispensary") {
       const textSearchBody = {
         textQuery: "cannabis dispensary",

@@ -12,6 +12,7 @@ struct ExploreView: View {
 
     let onFindBar: () -> Void
     let onFindRestaurant: () -> Void
+    let onFindLiquorStore: () -> Void
     let onFindClub: () -> Void
     let onFindDispensary: () -> Void
 
@@ -27,31 +28,45 @@ struct ExploreView: View {
             GeometryReader { geo in
                 let headerBottom: CGFloat = AppSpacing.xxl  // where header text ends
                 let usableHeight  = geo.size.height - headerBottom
-                let buttonsHeight: CGFloat = 135 + AppSpacing.md + 135 + AppSpacing.md + 118
+                let buttonsHeight: CGFloat = 135 + AppSpacing.md + 118 + AppSpacing.md + 118
                 let topPad = max(0, (usableHeight - buttonsHeight) / 2)
 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 0) {
                         Spacer().frame(height: headerBottom + topPad)
 
-                        VStack(spacing: AppSpacing.md) {
-                            categoryButton(
-                                category: .bar,
-                                title: "Find a Bar",
-                                icon: "wineglass",
-                                height: 135,
-                                iconSize: 34,
-                                titleFont: AppTypography.bodyMedium,
-                                action: onFindBar
-                            )
+                        categoryButton(
+                            category: .bar,
+                            title: "Find a Bar?",
+                            icon: "wineglass",
+                            height: 135,
+                            iconSize: 34,
+                            titleFont: AppTypography.bodyMedium,
+                            action: onFindBar
+                        )
+                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+
+                        Spacer()
+                            .frame(height: AppSpacing.md)
+
+                        HStack(spacing: AppSpacing.md) {
                             categoryButton(
                                 category: .restaurant,
-                                title: "Find a Restaurant",
+                                title: "Restaurant?",
                                 icon: "fork.knife",
-                                height: 135,
-                                iconSize: 34,
+                                height: 118,
+                                iconSize: 26,
                                 titleFont: AppTypography.bodyMedium,
                                 action: onFindRestaurant
+                            )
+                            categoryButton(
+                                category: .liquorStore,
+                                title: "Liquor Store?",
+                                icon: "cart",
+                                height: 118,
+                                iconSize: 26,
+                                titleFont: AppTypography.bodyMedium,
+                                action: onFindLiquorStore
                             )
                         }
                         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
@@ -62,20 +77,20 @@ struct ExploreView: View {
                         HStack(spacing: AppSpacing.md) {
                             categoryButton(
                                 category: .club,
-                                title: "Find a Club",
+                                title: "Club?",
                                 icon: "music.note",
                                 height: 118,
                                 iconSize: 26,
-                                titleFont: AppTypography.bodySmall,
+                                titleFont: AppTypography.bodyMedium,
                                 action: onFindClub
                             )
                             categoryButton(
                                 category: .dispensary,
-                                title: "Find a Dispensary",
+                                title: "Dispensary?",
                                 icon: "leaf",
                                 height: 118,
                                 iconSize: 26,
-                                titleFont: AppTypography.bodySmall,
+                                titleFont: AppTypography.bodyMedium,
                                 action: onFindDispensary
                             )
                         }
@@ -174,7 +189,7 @@ struct ExploreView: View {
 
 #Preview {
     ZStack(alignment: .bottom) {
-        ExploreView(onFindBar: {}, onFindRestaurant: {}, onFindClub: {}, onFindDispensary: {})
+        ExploreView(onFindBar: {}, onFindRestaurant: {}, onFindLiquorStore: {}, onFindClub: {}, onFindDispensary: {})
         CustomTabBar(selectedTab: .constant(.explore))
     }
     .ignoresSafeArea(edges: .bottom)

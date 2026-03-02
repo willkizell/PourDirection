@@ -52,8 +52,11 @@ struct SuggestionView: View {
     @State private var isLoading: Bool       = true   // start true — avoid "no results" flash
     @State private var errorMessage: String? = nil
     @State private var hasLoaded:    Bool    = false  // prevents onChange from re-firing after load
-    @State private var isReversing:  Bool    = false  // controls card transition direction
-    @State private var dragOffset:   CGFloat = 0      // horizontal drag for snap feel
+    @State private var isReversing:      Bool    = false  // controls card transition direction
+    @State private var dragOffset:       CGFloat = 0      // horizontal drag for snap feel
+    @State private var showDistanceSheet: Bool   = false
+    @State private var distanceSnapshotWalking: Double = 0
+    @State private var distanceSnapshotSearch:  Double = 0
     private let savedManager  = SavedPlacesManager.shared
     private let distancePrefs = DistancePreferences.shared
     private let adBannerHeight: CGFloat      = 50 + (AppSpacing.xs * 2)
@@ -90,6 +93,8 @@ struct SuggestionView: View {
             return "some music?"
         case .dispensary:
             return "the couch (lol)?"
+        case .liquorStore:
+            return "da liquor store?"
         }
     }
 
@@ -188,6 +193,18 @@ struct SuggestionView: View {
         // Notify parent when accent changes (mixed mode swiping, or after load)
         .onChange(of: currentIndex) { _, _ in
             onAccentChange?(accent)
+        }
+        .sheet(isPresented: $showDistanceSheet, onDismiss: {
+            let changed = distancePrefs.walkingDistanceMeters != distanceSnapshotWalking
+                       || distancePrefs.searchAreaMeters      != distanceSnapshotSearch
+            if changed {
+                hasLoaded = false
+                Task { await load() }
+            }
+        }) {
+            DistancePreferencesView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -386,44 +403,73 @@ struct SuggestionView: View {
         VStack(spacing: AppSpacing.lg) {
             Spacer()
 
-            Image(systemName: "map")
-                .font(.system(size: 38, weight: .light))
-                .foregroundColor(AppColors.secondary.opacity(0.25))
+            Image(systemName: exhausted ? "checkmark.circle" : "moon.zzz")
+                .font(.system(size: 40, weight: .light))
+                .foregroundColor(accent.opacity(0.7))
 
             VStack(spacing: AppSpacing.xs) {
-                Text(exhausted ? "You've seen it all nearby." : "Nothing open nearby right now.")
+                Text(exhausted ? "You've seen it all nearby." : "Nothing open near you right now.")
                     .font(AppTypography.bodyMedium)
-                    .foregroundColor(AppColors.secondary.opacity(0.6))
+                    .foregroundColor(AppColors.secondary.opacity(0.9))
                     .multilineTextAlignment(.center)
-                Text("Search your whole area on the map.")
+                Text(exhausted ? "Try the map to search a wider area." : "Expand your distance or check the map.")
                     .font(AppTypography.caption)
-                    .foregroundColor(AppColors.secondary.opacity(0.3))
+                    .foregroundColor(AppColors.secondary.opacity(0.55))
                     .multilineTextAlignment(.center)
             }
 
-            Button(action: {
-                HapticManager.shared.light()
-                onOpenMap?()
-            }) {
-                HStack(spacing: AppSpacing.xs) {
-                    Image(systemName: "map.fill")
-                        .font(.system(size: 13, weight: .medium))
-                    Text("Open Map")
-                        .font(AppTypography.bodySmall)
+            VStack(spacing: AppSpacing.sm) {
+                // Adjust distance
+                Button(action: {
+                    HapticManager.shared.light()
+                    distanceSnapshotWalking = distancePrefs.walkingDistanceMeters
+                    distanceSnapshotSearch  = distancePrefs.searchAreaMeters
+                    showDistanceSheet = true
+                }) {
+                    HStack(spacing: AppSpacing.xs) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Adjust Distance")
+                            .font(AppTypography.bodySmall)
+                    }
+                    .foregroundColor(accent)
+                    .padding(.horizontal, AppSpacing.md)
+                    .padding(.vertical, AppSpacing.sm)
+                    .frame(maxWidth: .infinity)
+                    .background(accent.opacity(0.12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppRadius.md)
+                            .stroke(accent.opacity(0.35), lineWidth: 0.75)
+                    )
+                    .cornerRadius(AppRadius.md)
                 }
-                .foregroundColor(AppColors.secondary.opacity(0.75))
-                .padding(.horizontal, AppSpacing.md)
-                .padding(.vertical, AppSpacing.sm)
-                .background(
-                    Capsule()
-                        .fill(AppColors.cardSurface.opacity(0.92))
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(AppColors.secondary.opacity(0.12), lineWidth: 0.75)
-                )
+                .buttonStyle(.plain)
+
+                // Open map
+                Button(action: {
+                    HapticManager.shared.light()
+                    onOpenMap?()
+                }) {
+                    HStack(spacing: AppSpacing.xs) {
+                        Image(systemName: "map.fill")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Open Map")
+                            .font(AppTypography.bodySmall)
+                    }
+                    .foregroundColor(AppColors.secondary.opacity(0.85))
+                    .padding(.horizontal, AppSpacing.md)
+                    .padding(.vertical, AppSpacing.sm)
+                    .frame(maxWidth: .infinity)
+                    .background(AppColors.cardSurface.opacity(0.92))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppRadius.md)
+                            .stroke(AppColors.secondary.opacity(0.2), lineWidth: 0.75)
+                    )
+                    .cornerRadius(AppRadius.md)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, AppSpacing.lg)
 
             Spacer()
         }
@@ -433,7 +479,7 @@ struct SuggestionView: View {
         .cornerRadius(AppRadius.lg)
         .overlay(
             RoundedRectangle(cornerRadius: AppRadius.lg)
-                .stroke(AppColors.secondary.opacity(0.07), lineWidth: 0.5)
+                .stroke(accent.opacity(0.15), lineWidth: 0.75)
         )
         .shadow(color: Color.black.opacity(0.3), radius: AppSpacing.sm, x: 0, y: 4)
         .frame(maxWidth: .infinity, alignment: .center)
@@ -479,8 +525,8 @@ struct SuggestionView: View {
             }
         }
 
-        // Text Search doesn't enforce a hard radius — trim dispensary results.
-        if category == .dispensary {
+        // Text Search doesn't enforce a hard radius — trim dispensary/liquor store results.
+        if category == .dispensary || category == .liquorStore {
             let maxDist = max(distancePrefs.walkingDistanceMeters, 3000)
             fetched = fetched.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= maxDist }
         }
@@ -553,7 +599,7 @@ struct SuggestionView: View {
                     )
                 }
             case .mixed:
-                let categories: [PlaceCategory] = [.bar, .restaurant, .club, .dispensary]
+                let categories: [PlaceCategory] = [.bar, .restaurant, .club, .dispensary, .liquorStore]
                 let buckets: [PlaceCategory: [Place]] = try await withThrowingTaskGroup(
                     of: (PlaceCategory, [Place]).self
                 ) { group in

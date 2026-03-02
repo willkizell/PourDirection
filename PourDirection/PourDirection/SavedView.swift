@@ -14,11 +14,14 @@ import CoreLocation
 struct SavedView: View {
 
     let onLetsGo: (Place) -> Void
+    var onSetHome: (() -> Void)? = nil
 
     @Environment(LocationManager.self) private var locationManager
-    private let manager = SavedPlacesManager.shared
+    private let manager     = SavedPlacesManager.shared
+    private let homeManager = HomeLocationManager.shared
 
-    @State private var filter: SavedFilter = .all
+    @State private var filter:        SavedFilter = .all
+    @State private var showHomeSheet: Bool        = false
 
     private enum SavedFilter: String, CaseIterable {
         case all    = "All"
@@ -41,13 +44,6 @@ struct SavedView: View {
             AppColors.gradientBackground
                 .ignoresSafeArea()
 
-            // ── Empty state — centered in full screen, behind header ──────
-            if displayedPlaces.isEmpty {
-                emptyState
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-
-            // ── Header + list — on top of empty state ─────────────────────
             VStack(spacing: 0) {
 
                 // ── Header ────────────────────────────────────────────────
@@ -99,20 +95,31 @@ struct SavedView: View {
                 .padding(.top, AppSpacing.lg)
                 .padding(.bottom, AppSpacing.md)
 
-                // ── List content ──────────────────────────────────────────
-                if !displayedPlaces.isEmpty {
-                    ScrollView(showsIndicators: false) {
-                        LazyVStack(spacing: AppSpacing.sm) {
+                // ── List — home card always first ─────────────────────────
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: AppSpacing.sm) {
+
+                        // Home card — always pinned at top
+                        homeCard
+
+                        if displayedPlaces.isEmpty {
+                            emptyState
+                        } else {
                             ForEach(displayedPlaces) { saved in
                                 savedRow(saved)
                             }
                         }
-                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
-                        .padding(.top, AppSpacing.sm)
-                        .padding(.bottom, CustomTabBar.height + adBannerHeight + AppSpacing.md)
                     }
+                    .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+                    .padding(.top, AppSpacing.sm)
+                    .padding(.bottom, CustomTabBar.height + adBannerHeight + AppSpacing.md)
                 }
             }
+        }
+        .sheet(isPresented: $showHomeSheet) {
+            HomeLocationSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -213,15 +220,111 @@ struct SavedView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Empty States
+    // MARK: - Home Card
+
+    private var homeCard: some View {
+        let isSet = homeManager.isSet
+        let dist  = homeManager.distance(from: locationManager.currentLocation)
+        let isWalking = dist.map { $0 <= DistancePreferences.shared.walkingDistanceMeters } ?? false
+
+        return Button(action: {
+            HapticManager.shared.heavy()
+            if let place = homeManager.homePlace {
+                onLetsGo(place)
+            } else {
+                onSetHome?()
+            }
+        }) {
+            HStack(spacing: AppSpacing.sm) {
+
+                Image(systemName: "house.fill")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(isSet ? AppColors.background : AppColors.primary.opacity(0.55))
+                    .frame(width: 26, alignment: .center)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Home")
+                        .font(AppTypography.bodyMedium)
+                        .foregroundColor(isSet ? AppColors.background : AppColors.secondary)
+
+                    if isSet {
+                        HStack(spacing: AppSpacing.xs) {
+                            if let address = homeManager.formattedAddress {
+                                Text(address)
+                                    .font(AppTypography.caption)
+                                    .foregroundColor(AppColors.background.opacity(0.7))
+                                    .lineLimit(1)
+                            }
+                            if let dist {
+                                if homeManager.formattedAddress != nil {
+                                    Text("·")
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppColors.background.opacity(0.4))
+                                }
+                                HStack(spacing: 3) {
+                                    Image(systemName: isWalking ? "figure.walk" : "car.fill")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(AppColors.background.opacity(0.6))
+                                    Text(Place.formatDistance(dist))
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppColors.background.opacity(0.7))
+                                }
+                            }
+                        }
+                    } else {
+                        Text("Tap to set your home location")
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppColors.secondary.opacity(0.45))
+                    }
+                }
+
+                Spacer()
+
+                if isSet {
+                    // Edit button opens sheet directly
+                    Button(action: {
+                        HapticManager.shared.light()
+                        showHomeSheet = true
+                    }) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(AppColors.background.opacity(0.65))
+                            .frame(width: 30, height: 30)
+                            .background(AppColors.background.opacity(0.15))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(AppColors.secondary.opacity(0.3))
+                }
+            }
+            .padding(AppSpacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isSet ? AppColors.primary : AppColors.cardSurface.opacity(0.92))
+            .cornerRadius(AppRadius.lg)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.lg)
+                    .stroke(
+                        isSet ? Color.clear : AppColors.primary.opacity(0.3),
+                        lineWidth: 0.75
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Empty State (inline, not full-screen)
 
     @ViewBuilder
     private var emptyState: some View {
         VStack(spacing: AppSpacing.xs) {
             Image(systemName: "heart")
-                .font(.system(size: 32, weight: .light))
-                .foregroundColor(AppColors.primary.opacity(0.4))
+                .font(.system(size: 28, weight: .light))
+                .foregroundColor(AppColors.primary.opacity(0.35))
                 .padding(.bottom, AppSpacing.xs)
+                .padding(.top, AppSpacing.xl)
 
             switch filter {
             case .all:

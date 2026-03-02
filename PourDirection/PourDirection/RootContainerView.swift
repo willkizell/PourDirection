@@ -25,6 +25,8 @@ enum AppRoute: Hashable {
 
 struct RootContainerView: View {
 
+    @Environment(LocationManager.self) private var locationManager
+
     // ── Navigation & Flow State ───────────────────────────────────────────────
     @State private var selectedTab: AppTab          = .explore
     @State private var navigationPath               = NavigationPath()
@@ -32,6 +34,8 @@ struct RootContainerView: View {
     @State private var compassPresentation: Place?  = nil
     /// Accent color driven by the current content — flows to tab bar.
     @State private var tabBarAccent: Color          = AppColors.primary
+    /// Prevents the prefetch task from firing more than once per session.
+    @State private var hasPrewarmed: Bool           = false
 
     private var shouldHideAdBanner: Bool {
         if selectedTab == .profile { return true }
@@ -107,6 +111,33 @@ struct RootContainerView: View {
                 tabBarAccent = AppColors.primary
             }
         }
+        .onAppear {
+            // Start location as early as possible so it's ready when views appear
+            locationManager.requestPermission()
+            locationManager.startUpdating()
+        }
+        // Once location arrives for the first time, pre-warm the cache for all
+        // categories so the first tap on any suggestion view is near-instant.
+        .onChange(of: locationManager.currentLocation) { _, loc in
+            guard let loc, !hasPrewarmed else { return }
+            hasPrewarmed = true
+            let lat  = loc.coordinate.latitude
+            let lng  = loc.coordinate.longitude
+            let walk = DistancePreferences.shared.walkingDistanceMeters
+            let wide = DistancePreferences.shared.searchAreaMeters
+            Task {
+                async let bars    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walk)
+                async let rests   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: walk)
+                async let dispos  = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: walk)
+                async let liquor  = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: walk)
+                async let clubs   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",   radius: wide)
+                _ = try? await bars
+                _ = try? await rests
+                _ = try? await dispos
+                _ = try? await liquor
+                _ = try? await clubs
+            }
+        }
         .preferredColorScheme(.dark)
     }
 
@@ -117,15 +148,25 @@ struct RootContainerView: View {
         switch selectedTab {
         case .explore:
             ExploreView(
-                onFindBar:        { navigationPath.append(AppRoute.suggestions(category: .bar)) },
-                onFindRestaurant: { navigationPath.append(AppRoute.suggestions(category: .restaurant)) },
-                onFindClub:       { navigationPath.append(AppRoute.suggestions(category: .club)) },
-                onFindDispensary: { navigationPath.append(AppRoute.suggestions(category: .dispensary)) }
+                onFindBar:         { navigationPath.append(AppRoute.suggestions(category: .bar)) },
+                onFindRestaurant:  { navigationPath.append(AppRoute.suggestions(category: .restaurant)) },
+                onFindLiquorStore: { navigationPath.append(AppRoute.suggestions(category: .liquorStore)) },
+                onFindClub:        { navigationPath.append(AppRoute.suggestions(category: .club)) },
+                onFindDispensary:  { navigationPath.append(AppRoute.suggestions(category: .dispensary)) }
             )
         case .saved:
-            SavedView(onLetsGo: { place in
-                compassPresentation = place
-            })
+            SavedView(
+                onLetsGo: { place in
+                    compassPresentation = place
+                },
+                onSetHome: {
+                    // Switch to Settings and open the home sheet
+                    selectedTab = .profile
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        HomeLocationManager.shared.shouldPresentSetupSheet = true
+                    }
+                }
+            )
         case .map:
             MapTabView(
                 onLetsGo: { mapItem in
@@ -137,7 +178,12 @@ struct RootContainerView: View {
                         rating:           mapItem.rating
                     )
                 },
-                onAccentChange: { tabBarAccent = $0 }
+                onAccentChange: { tabBarAccent = $0 },
+                onHomeTap: {
+                    if let homePlace = HomeLocationManager.shared.homePlace {
+                        compassPresentation = homePlace
+                    }
+                }
             )
         case .profile:
             ProfileView(

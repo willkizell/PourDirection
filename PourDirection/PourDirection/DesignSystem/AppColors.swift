@@ -57,6 +57,9 @@ struct AppColors {
     /// Dispensary category color — warm gold — #AC896A
     static let dispensaryGold  = Color(hex: "AC896A")
 
+    /// Liquor store category color — amber orange — #E97800
+    static let liquorStoreAmber = Color(hex: "E97800")
+
     /// White — used for primary text and high-emphasis elements
     static let secondary       = Color(hex: "FFFFFF")
 

@@ -12,6 +12,34 @@
 import Foundation
 import Supabase
 
+// MARK: - Places Cache
+
+/// Thread-safe in-memory cache for nearby places results.
+/// Keys are rounded to a ~1 km grid so nearby movement reuses results.
+/// Entries expire after `ttl` seconds (default 5 minutes).
+private actor PlacesCache {
+
+    private struct Entry {
+        let places: [Place]
+        let expiry: Date
+    }
+
+    private var store: [String: Entry] = [:]
+    private let ttl: TimeInterval = 300   // 5 minutes
+
+    func get(key: String) -> [Place]? {
+        guard let entry = store[key], Date() < entry.expiry else {
+            store.removeValue(forKey: key)
+            return nil
+        }
+        return entry.places
+    }
+
+    func set(key: String, places: [Place]) {
+        store[key] = Entry(places: places, expiry: Date().addingTimeInterval(ttl))
+    }
+}
+
 // MARK: - SupabaseManager
 
 final class SupabaseManager {
@@ -19,6 +47,10 @@ final class SupabaseManager {
     // MARK: Singleton
 
     static let shared = SupabaseManager()
+
+    // MARK: Cache
+
+    private let placesCache = PlacesCache()
 
     // MARK: Client
 
@@ -71,7 +103,15 @@ final class SupabaseManager {
     /// `type` maps to Google Places API `includedTypes` (e.g. "bar", "restaurant").
     /// `radius` overrides the server-side default search radius (meters).
     /// Returns decoded `Place` values ready for display.
+    /// Results are cached for 5 minutes keyed by type + ~1 km location grid + radius.
     func fetchNearbyPlaces(lat: Double, lng: Double, type: String = "bar", radius: Double? = nil) async throws -> [Place] {
+        // Round to 2 decimal places (~1.1 km grid) for cache key
+        let key = "\(type)-\(String(format: "%.2f", lat))-\(String(format: "%.2f", lng))-\(Int(radius ?? 0))"
+
+        if let cached = await placesCache.get(key: key) {
+            return cached
+        }
+
         let response: NearbyPlacesResponse = try await invokeFunction(
             name: "nearby-places",
             body: NearbyPlacesPayload(lat: lat, lng: lng, type: type, radius: radius)
@@ -80,6 +120,8 @@ final class SupabaseManager {
         if let first = places.first {
             print("[NearbyPlaces] \(type) — \(first.name) — isOpenNow: \(String(describing: first.isOpenNow)) — todayHours: \(String(describing: first.todayHours)) — weekdayDesc count: \(first.weekdayDescriptions?.count ?? 0)")
         }
+
+        await placesCache.set(key: key, places: places)
         return places
     }
 

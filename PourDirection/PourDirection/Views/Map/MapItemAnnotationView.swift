@@ -33,10 +33,11 @@ struct MapPinView: View {
 
     private var iconName: String {
         switch category {
-        case .bar:        return "wineglass"
-        case .restaurant: return "fork.knife"
-        case .club:       return "music.note"
-        case .dispensary: return "leaf"
+        case .bar:         return "wineglass"
+        case .restaurant:  return "fork.knife"
+        case .club:        return "music.note"
+        case .dispensary:  return "leaf"
+        case .liquorStore: return "cart"
         }
     }
 
@@ -63,6 +64,33 @@ struct MapPinView: View {
         }
         .opacity(isClosed ? 0.50 : 1.0)
         .saturation(isClosed ? 0.3 : 1.0)
+    }
+}
+
+// MARK: - Home Pin View
+
+/// Inverted-color pin for the home annotation on the map.
+/// Brand primary fill + dark house icon (opposite of category pins).
+struct HomePinView: View {
+
+    var body: some View {
+        ZStack {
+            ZStack {
+                PinTail().fill(AppColors.primary)
+                PinTail().stroke(AppColors.primary.opacity(0.5), lineWidth: 1.5)
+            }
+            .frame(width: 13, height: 9)
+            .offset(y: 21)
+
+            Circle()
+                .fill(AppColors.primary)
+                .frame(width: 36, height: 36)
+                .overlay(Circle().stroke(AppColors.primary.opacity(0.4), lineWidth: 1.5))
+
+            Image(systemName: "house.fill")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(AppColors.background)
+        }
     }
 }
 

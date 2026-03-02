@@ -13,28 +13,31 @@ import SwiftUI
 // MARK: - Place Category
 
 enum PlaceCategory: String, CaseIterable, Codable {
-    case bar        = "Bar"
-    case restaurant = "Restaurant"
-    case club       = "Club"
-    case dispensary = "Dispensary"
+    case bar         = "Bar"
+    case restaurant  = "Restaurant"
+    case club        = "Club"
+    case dispensary  = "Dispensary"
+    case liquorStore = "Liquor Store"
 
     /// Google Places API `includedTypes` value for this category.
     var googleIncludedType: String {
         switch self {
-        case .bar:        return "bar"
-        case .restaurant: return "restaurant"
-        case .club:       return "night_club"
-        case .dispensary: return "dispensary"
+        case .bar:         return "bar"
+        case .restaurant:  return "restaurant"
+        case .club:        return "night_club"
+        case .dispensary:  return "dispensary"
+        case .liquorStore: return "liquor_store"
         }
     }
 
     /// Brand color for this category — single source of truth across the app.
     var color: Color {
         switch self {
-        case .bar:        return AppColors.barTeal
-        case .restaurant: return AppColors.restaurantBlue
-        case .club:       return AppColors.clubRed
-        case .dispensary: return AppColors.dispensaryGold
+        case .bar:         return AppColors.barTeal
+        case .restaurant:  return AppColors.restaurantBlue
+        case .club:        return AppColors.clubRed
+        case .dispensary:  return AppColors.dispensaryGold
+        case .liquorStore: return AppColors.liquorStoreAmber
         }
     }
 }
@@ -172,17 +175,19 @@ struct MapItem: Identifiable, Hashable {
             longitude: baseLng + Double.random(in: -0.02...0.02)
         )
 
-        let barNames        = ["The Rusty Anchor", "Cellar No. 7", "The Copper Still", "Harbor Social"]
-        let restaurantNames = ["The Larder", "Olive & Salt", "East Side Kitchen", "The Table"]
-        let clubNames       = ["Neon Serenade", "Echo Lounge", "Apex Club", "Drift"]
-        let dispensaryNames = ["Green Room", "The Vault", "Elevated", "Canopy"]
+        let barNames         = ["The Rusty Anchor", "Cellar No. 7", "The Copper Still", "Harbor Social"]
+        let restaurantNames  = ["The Larder", "Olive & Salt", "East Side Kitchen", "The Table"]
+        let clubNames        = ["Neon Serenade", "Echo Lounge", "Apex Club", "Drift"]
+        let dispensaryNames  = ["Green Room", "The Vault", "Elevated", "Canopy"]
+        let liquorStoreNames = ["BevMo!", "Total Wine", "The Liquor Barn", "Spirits & Co"]
 
         let pool: [String] = {
             switch category {
-            case .bar:        return barNames
-            case .restaurant: return restaurantNames
-            case .club:       return clubNames
-            case .dispensary: return dispensaryNames
+            case .bar:         return barNames
+            case .restaurant:  return restaurantNames
+            case .club:        return clubNames
+            case .dispensary:  return dispensaryNames
+            case .liquorStore: return liquorStoreNames
             }
         }()
 

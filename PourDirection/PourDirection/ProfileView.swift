@@ -21,6 +21,9 @@ struct ProfileView: View {
     @State private var notifStatus: UNAuthorizationStatus = .notDetermined
     @State private var showUpgradeSheet    = false
     @State private var showDistanceSheet   = false
+    @State private var showHomeSheet       = false
+
+    private let homeManager = HomeLocationManager.shared
 
     let onHelp: () -> Void
 
@@ -106,6 +109,15 @@ struct ProfileView: View {
                             showDistanceSheet = true
                         }
 
+                        SettingsNavRow(
+                            icon: "house",
+                            title: "Home Location",
+                            subtitle: homeManager.formattedAddress ?? (homeManager.isSet ? nil : "Not set")
+                        ) {
+                            HapticManager.shared.light()
+                            showHomeSheet = true
+                        }
+
                         // ── Actions ───────────────────────────────────────
                         VStack(spacing: 0) {
                             SettingsNavRow(icon: "crown", title: "Remove Ads") {
@@ -129,6 +141,18 @@ struct ProfileView: View {
             DistancePreferencesView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showHomeSheet) {
+            HomeLocationSheet()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        // Triggered by SavedView when home card is tapped but no home is set
+        .onChange(of: homeManager.shouldPresentSetupSheet) { _, should in
+            if should {
+                homeManager.shouldPresentSetupSheet = false
+                showHomeSheet = true
+            }
         }
         .onAppear {
             checkNotificationStatus()
@@ -200,10 +224,11 @@ struct SettingsToggleRow: View {
     }
 }
 
-/// Navigation row — icon + label + chevron, tappable
+/// Navigation row — icon + label (+ optional subtitle) + chevron, tappable
 struct SettingsNavRow: View {
     let icon: String
     let title: String
+    var subtitle: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -213,9 +238,17 @@ struct SettingsNavRow: View {
                     .font(.system(size: 16))
                     .foregroundColor(AppColors.secondary.opacity(0.6))
                     .frame(width: 24, alignment: .center)
-                Text(title)
-                    .font(AppTypography.body)
-                    .foregroundColor(AppColors.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(AppTypography.body)
+                        .foregroundColor(AppColors.secondary)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppColors.secondary.opacity(0.45))
+                            .lineLimit(1)
+                    }
+                }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .medium))
