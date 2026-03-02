@@ -7,12 +7,15 @@
 //
 
 import SwiftUI
+import CoreLocation
 #if canImport(GoogleMobileAds)
 import GoogleMobileAds
 #endif
 
 @main
 struct PourDirectionApp: App {
+
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     @State private var showSplash  = true
     @State private var mainOpacity = 0.0
@@ -79,6 +82,14 @@ struct PourDirectionApp: App {
                 // Second launch: ageVerified = true AND hasLaunchedBefore = true → request.
                 if ageVerified && hasLaunchedBefore {
                     NotificationManager.shared.requestPermissionAndSchedule()
+
+                    // After notification permission is set, upgrade to Always location
+                    // so significant-location-change monitoring can wake the app in the background.
+                    if locationManager.authorizationStatus == .authorizedWhenInUse ||
+                       locationManager.authorizationStatus == .authorizedAlways {
+                        locationManager.requestAlwaysPermission()
+                        locationManager.startSignificantLocationMonitoring()
+                    }
                 }
                 hasLaunchedBefore = true
                 // ── Supabase connection test ─────────────────────────────────
@@ -86,5 +97,45 @@ struct PourDirectionApp: App {
                 Task { await SupabaseManager.shared.testConnection() }
             }
         }
+    }
+}
+
+// MARK: - Background location launch handling
+
+/// When iOS relaunches the app in the background due to a significant location change,
+/// it passes UIApplication.LaunchOptionsKey.location in launchOptions.
+/// SwiftUI apps use UIApplicationDelegateAdaptor for this.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        if launchOptions?[.location] != nil {
+            // App was woken by a significant location change.
+            // Create a temporary location manager to get the latest location and process it.
+            BackgroundLocationHandler.shared.handleBackgroundLaunch()
+        }
+        return true
+    }
+}
+
+/// Thin wrapper that processes a background location event without the full SwiftUI environment.
+final class BackgroundLocationHandler: NSObject, CLLocationManagerDelegate {
+    static let shared = BackgroundLocationHandler()
+    private let manager = CLLocationManager()
+
+    private override init() {
+        super.init()
+        manager.delegate = self
+    }
+
+    func handleBackgroundLaunch() {
+        guard CLLocationManager.significantLocationChangeMonitoringAvailable() else { return }
+        manager.startMonitoringSignificantLocationChanges()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        NotificationManager.shared.handleSignificantLocationChange(location)
     }
 }

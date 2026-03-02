@@ -39,6 +39,12 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
         manager.requestWhenInUseAuthorization()
     }
 
+    /// Upgrades to Always authorization so significant-location-change monitoring
+    /// can wake the app in the background when the user arrives in a new city.
+    func requestAlwaysPermission() {
+        manager.requestAlwaysAuthorization()
+    }
+
     func startUpdating() {
         manager.startUpdatingLocation()
         manager.startUpdatingHeading()
@@ -47,6 +53,13 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
     func stopUpdating() {
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
+    }
+
+    /// Start monitoring for significant location changes (≥500 m).
+    /// Works even when app is terminated — iOS relaunches the app to deliver the event.
+    func startSignificantLocationMonitoring() {
+        guard CLLocationManager.significantLocationChangeMonitoringAvailable() else { return }
+        manager.startMonitoringSignificantLocationChanges()
     }
 
     // MARK: - CLLocationManagerDelegate

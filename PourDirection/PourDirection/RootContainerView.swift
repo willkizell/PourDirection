@@ -157,14 +157,22 @@ struct RootContainerView: View {
                 onLetsGo: { place in
                     compassPresentation = place
                 },
-                onAccentChange: { tabBarAccent = $0 }
+                onAccentChange: { tabBarAccent = $0 },
+                onOpenMap: {
+                    navigationPath = NavigationPath()
+                    selectedTab = .map
+                }
             )
         case .suggestionsMixed:
             SuggestionView.mixed(
                 onLetsGo: { place in
                     compassPresentation = place
                 },
-                onAccentChange: { tabBarAccent = $0 }
+                onAccentChange: { tabBarAccent = $0 },
+                onOpenMap: {
+                    navigationPath = NavigationPath()
+                    selectedTab = .map
+                }
             )
         case .compass(let place):
             // Compass is presented via fullScreenCover(item:), not as a pushed destination.

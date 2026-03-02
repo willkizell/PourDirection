@@ -19,21 +19,24 @@ struct SuggestionView: View {
     let mode: Mode
     let onLetsGo: (Place) -> Void
     let onAccentChange: ((Color) -> Void)?
+    let onOpenMap: (() -> Void)?
 
-    init(category: PlaceCategory, onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil) {
+    init(category: PlaceCategory, onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil, onOpenMap: (() -> Void)? = nil) {
         self.mode = .category(category)
         self.onLetsGo = onLetsGo
         self.onAccentChange = onAccentChange
+        self.onOpenMap = onOpenMap
     }
 
-    static func mixed(onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil) -> SuggestionView {
-        SuggestionView(mode: .mixed, onLetsGo: onLetsGo, onAccentChange: onAccentChange)
+    static func mixed(onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil, onOpenMap: (() -> Void)? = nil) -> SuggestionView {
+        SuggestionView(mode: .mixed, onLetsGo: onLetsGo, onAccentChange: onAccentChange, onOpenMap: onOpenMap)
     }
 
-    private init(mode: Mode, onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil) {
+    private init(mode: Mode, onLetsGo: @escaping (Place) -> Void, onAccentChange: ((Color) -> Void)? = nil, onOpenMap: (() -> Void)? = nil) {
         self.mode = mode
         self.onLetsGo = onLetsGo
         self.onAccentChange = onAccentChange
+        self.onOpenMap = onOpenMap
     }
 
     @Environment(LocationManager.self) private var locationManager
@@ -137,36 +140,9 @@ struct SuggestionView: View {
                     } else if let item = currentItem {
                         placeCard(item.place, category: item.category)
                     } else if !items.isEmpty {
-                        VStack(spacing: AppSpacing.sm) {
-                            Image(systemName: "moon.zzz.fill")
-                                .font(.system(size: 36))
-                                .foregroundColor(AppColors.primary.opacity(0.6))
-                            Text({
-                                if case .mixed = mode {
-                                    return "That's everything open nearby."
-                                }
-                                let label = activeCategory?.rawValue.lowercased() ?? "places"
-                                return "That's everything open nearby for \(label)s."
-                            }())
-                                .font(AppTypography.bodySmall)
-                                .foregroundColor(AppColors.secondary.opacity(0.6))
-                            Text("Try expanding your radius or check back later.")
-                                .font(AppTypography.caption)
-                                .foregroundColor(AppColors.secondary.opacity(0.35))
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+                        endOfSuggestionsCard(exhausted: true)
                     } else {
-                        VStack(spacing: AppSpacing.xs) {
-                            Text("Nothing open nearby")
-                                .font(AppTypography.bodyMedium)
-                                .foregroundColor(AppColors.secondary.opacity(0.5))
-                            Text("Try expanding your radius or checking back later")
-                                .font(AppTypography.caption)
-                                .foregroundColor(AppColors.secondary.opacity(0.3))
-                        }
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+                        endOfSuggestionsCard(exhausted: false)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .top)
@@ -177,8 +153,9 @@ struct SuggestionView: View {
                     if let item = currentItem {
                         PrimaryButton(title: "Let's Go", color: accent) { onLetsGo(item.place) }
                     } else if !items.isEmpty {
+                        // Start over link below the end card
                         Button(action: {
-                            isReversing = false
+                            isReversing = true
                             dragOffset = 0
                             withAnimation(.spring(response: 0.22, dampingFraction: 0.9)) {
                                 currentIndex = 0
@@ -186,7 +163,7 @@ struct SuggestionView: View {
                         }) {
                             Text("Start Over")
                                 .font(AppTypography.bodySmall)
-                                .foregroundColor(AppColors.secondary.opacity(0.5))
+                                .foregroundColor(AppColors.secondary.opacity(0.35))
                         }
                         .buttonStyle(.plain)
                     }
@@ -376,7 +353,7 @@ struct SuggestionView: View {
                             dragOffset = 0
                             currentIndex -= 1
                         }
-                } else if shouldGoNext && currentIndex + 1 < items.count {
+                } else if shouldGoNext && currentIndex + 1 <= items.count {
                         isReversing = false
                         withAnimation(.spring(response: 0.12, dampingFraction: 0.82)) {
                             dragOffset = 0
@@ -401,6 +378,65 @@ struct SuggestionView: View {
                     removal:   .move(edge: .leading).combined(with: .opacity)
                 )
         )
+    }
+
+    // MARK: - End of Suggestions Card
+
+    private func endOfSuggestionsCard(exhausted: Bool) -> some View {
+        VStack(spacing: AppSpacing.lg) {
+            Spacer()
+
+            Image(systemName: "map")
+                .font(.system(size: 38, weight: .light))
+                .foregroundColor(AppColors.secondary.opacity(0.25))
+
+            VStack(spacing: AppSpacing.xs) {
+                Text(exhausted ? "You've seen it all nearby." : "Nothing open nearby right now.")
+                    .font(AppTypography.bodyMedium)
+                    .foregroundColor(AppColors.secondary.opacity(0.6))
+                    .multilineTextAlignment(.center)
+                Text("Search your whole area on the map.")
+                    .font(AppTypography.caption)
+                    .foregroundColor(AppColors.secondary.opacity(0.3))
+                    .multilineTextAlignment(.center)
+            }
+
+            Button(action: {
+                HapticManager.shared.light()
+                onOpenMap?()
+            }) {
+                HStack(spacing: AppSpacing.xs) {
+                    Image(systemName: "map.fill")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("Open Map")
+                        .font(AppTypography.bodySmall)
+                }
+                .foregroundColor(AppColors.secondary.opacity(0.75))
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.vertical, AppSpacing.sm)
+                .background(
+                    Capsule()
+                        .fill(AppColors.cardSurface.opacity(0.92))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(AppColors.secondary.opacity(0.12), lineWidth: 0.75)
+                )
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+        }
+        .frame(width: cardWidth)
+        .frame(height: cardMaxHeight)
+        .background(AppColors.cardSurface.opacity(0.5))
+        .cornerRadius(AppRadius.lg)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.lg)
+                .stroke(AppColors.secondary.opacity(0.07), lineWidth: 0.5)
+        )
+        .shadow(color: Color.black.opacity(0.3), radius: AppSpacing.sm, x: 0, y: 4)
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var photoPlaceholder: some View {

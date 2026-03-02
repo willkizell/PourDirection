@@ -206,13 +206,27 @@ struct CompassActiveView: View {
                     .buttonStyle(.plain)
 
                     if showRideButton {
-                        SecondaryButton(
-                            title: "Want a Ride?",
-                            iconName: "bus.fill",
-                            verticalPadding: AppSpacing.sm
-                        ) {
+                        Button(action: {
+                            HapticManager.shared.light()
                             openUber()
+                        }) {
+                            HStack(spacing: AppSpacing.iconLabelSpacing) {
+                                Image(systemName: "car.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Get a Ride with Uber?")
+                            }
+                            .font(AppTypography.bodyMedium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AppSpacing.md)
+                            .background(Color.clear)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(AppColors.secondary.opacity(0.2), lineWidth: 1.0)
+                            )
                         }
+                        .buttonStyle(.plain)
                         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }

@@ -15,6 +15,7 @@
 
 import Foundation
 import UserNotifications
+import CoreLocation
 
 final class NotificationManager: NSObject {
 
@@ -30,6 +31,16 @@ final class NotificationManager: NSObject {
 
     private let fridayID   = "com.pourdirection.notify.friday"
     private let saturdayID = "com.pourdirection.notify.saturday"
+    private let newCityID  = "com.pourdirection.notify.newcity"
+
+    // MARK: - UserDefaults Keys (new-city detection)
+
+    private let lastCityKey        = "com.pourdirection.lastKnownCity"
+    private let lastCityArrivalKey = "com.pourdirection.lastCityArrivalDate"
+
+    /// Minimum time (seconds) the user must be in the new city before we notify.
+    /// 45 minutes filters out quick drive-throughs.
+    private let newCityDwellSeconds: TimeInterval = 45 * 60
 
     // MARK: - Public API
 
@@ -83,7 +94,57 @@ final class NotificationManager: NSObject {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
 
+    /// Call this from the significant-location-change delegate (including background launches).
+    /// Reverse-geocodes the location, checks if the city changed, and fires a notification
+    /// after the user has been in the new city for at least `newCityDwellSeconds`.
+    func handleSignificantLocationChange(_ location: CLLocation) {
+        let geocoder = CLGeocoder()
+        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
+            guard let self,
+                  let city = placemarks?.first?.locality,
+                  !city.isEmpty else { return }
+
+            let defaults    = UserDefaults.standard
+            let lastCity    = defaults.string(forKey: self.lastCityKey)
+            let arrivalDate = defaults.object(forKey: self.lastCityArrivalKey) as? Date
+
+            if city != lastCity {
+                // Entered a new city — record it and start the dwell timer
+                defaults.set(city, forKey: self.lastCityKey)
+                defaults.set(Date(), forKey: self.lastCityArrivalKey)
+            } else if let arrival = arrivalDate,
+                      Date().timeIntervalSince(arrival) >= self.newCityDwellSeconds {
+                // Still in the same new city after dwell period — fire once, then clear arrival
+                // so we don't re-fire on subsequent location updates in the same city.
+                defaults.removeObject(forKey: self.lastCityArrivalKey)
+                self.fireNewCityNotification()
+            }
+        }
+    }
+
     // MARK: - Private
+
+    private func fireNewCityNotification() {
+        let center  = UNUserNotificationCenter.current()
+        center.getNotificationSettings { [weak self] settings in
+            guard let self,
+                  settings.authorizationStatus == .authorized ||
+                  settings.authorizationStatus == .provisional else { return }
+
+            // Remove any previous new-city notification that hasn't been tapped yet
+            center.removePendingNotificationRequests(withIdentifiers: [self.newCityID])
+
+            let content       = UNMutableNotificationContent()
+            content.title     = "New in town?"
+            content.body      = "Pour's got you — see what's open tonight!"
+            content.sound     = .default
+
+            // Immediate one-shot trigger (non-repeating)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            let request = UNNotificationRequest(identifier: self.newCityID, content: content, trigger: trigger)
+            center.add(request)
+        }
+    }
 
     private func makeRequest(
         id:      String,
