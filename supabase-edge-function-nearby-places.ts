@@ -2,6 +2,36 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GOOGLE_PLACES_API_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY");
 
+// ── Jurisdiction helpers ──────────────────────────────────────────────────────
+// Returns true for regions where convenience stores / gas stations
+// are NOT permitted to sell spirits, so they should be filtered out
+// of liquor store results.
+function isConvenienceAlcoholRestricted(lat: number, lng: number): boolean {
+  // Outside Canada → never restrict (US, etc. allow gas station alcohol sales)
+  const inCanada = lat >= 41.7 && lat <= 83.1 && lng >= -141.0 && lng <= -52.6;
+  if (!inCanada) return false;
+
+  // Ontario — beer/wine at corner stores & gas stations permitted since 2024
+  const inOntario = lat >= 41.7 && lat <= 56.9 && lng >= -95.2 && lng <= -74.3;
+  if (inOntario) return false;
+
+  // Quebec — beer/wine at dépanneurs (corner stores) permitted
+  const inQuebec = lat >= 44.9 && lat <= 62.6 && lng >= -79.8 && lng <= -57.1;
+  if (inQuebec) return false;
+
+  // All other Canadian provinces/territories restrict convenience alcohol:
+  // BC, AB, SK, MB, NS, NB, PEI, NL, YT, NT, NU
+  return true;
+}
+
+// Place types that represent convenience / fuel retail
+// (only filtered out in restricted jurisdictions)
+const CONVENIENCE_TYPES = new Set([
+  "convenience_store",
+  "gas_station",
+  "supermarket",        // supermarkets rarely stock spirits in control provinces
+]);
+
 interface TypeConfig {
   includedTypes?: string[];
   excludedTypes?: string[];
@@ -15,7 +45,20 @@ function resolveTypeConfig(type: string): TypeConfig {
     case "bar":
       return {
         includedTypes: ["bar"],
-        excludedTypes: ["community_center", "sports_club", "fitness_center"],
+        excludedTypes: [
+          // Fitness / sports
+          "fitness_center", "gym", "sports_club", "sports_complex",
+          // Community / civic
+          "community_center", "cultural_center", "event_venue",
+          // Performing arts / entertainment venues (non-bar)
+          "performing_arts_theater", "banquet_hall",
+          // Religious
+          "church", "mosque", "synagogue", "hindu_temple", "buddhist_temple",
+          // Education
+          "university", "school", "primary_school", "secondary_school", "library",
+          // Arts / museums
+          "museum", "art_gallery",
+        ],
         radius: 1500,
       };
 
@@ -141,7 +184,10 @@ serve(async (req) => {
         `[nearby-places] liquor_store text search returning ${textPlaces.length} places`
       );
 
-      const mapped = textPlaces.map((place: any) => {
+      const restricted = isConvenienceAlcoholRestricted(lat, lng);
+
+      const mapped = textPlaces
+        .map((place: any) => {
         const photoName = place.photos?.[0]?.name ?? null;
         const photoUri = photoName
           ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&key=${GOOGLE_PLACES_API_KEY}`
@@ -159,7 +205,14 @@ serve(async (req) => {
           isOpenNow: place.currentOpeningHours?.openNow ?? null,
           weekdayDescriptions: place.currentOpeningHours?.weekdayDescriptions ?? null,
         };
+      })
+      .filter((place: any) => {
+        if (!restricted) return true;
+        const placeTypes = new Set<string>(place.types);
+        return ![...CONVENIENCE_TYPES].some(t => placeTypes.has(t));
       });
+
+      console.log(`[nearby-places] liquor_store after jurisdiction filter: ${mapped.length} places (restricted=${restricted})`);
 
       return new Response(JSON.stringify({ places: mapped }), {
         headers: { "Content-Type": "application/json" },

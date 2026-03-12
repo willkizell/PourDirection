@@ -332,7 +332,6 @@ struct SuggestionView: View {
             .layoutPriority(1)
         }
                 .frame(width: cardWidth)
-                .frame(maxHeight: cardMaxHeight, alignment: .top)
                 .background(AppColors.cardSurface.opacity(0.92))
                 .cornerRadius(AppRadius.lg)
                 .overlay(

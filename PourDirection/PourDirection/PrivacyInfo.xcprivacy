@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+    <!-- App uses ATT + AdMob, which tracks across apps/websites -->
+    <key>NSPrivacyTracking</key>
+    <true/>
+
+    <!-- Domains AdMob uses for ad targeting/tracking -->
+    <key>NSPrivacyTrackingDomains</key>
+    <array>
+        <string>googlemobileads.com</string>
+        <string>doubleclick.net</string>
+        <string>googleadservices.com</string>
+        <string>googletagservices.com</string>
+    </array>
+
+    <!-- Data the app collects -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+
+        <!-- Precise location — used only to find nearby venues, not linked to identity -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePreciseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+    </array>
+
+    <!-- Required-reason APIs used by the app -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+
+        <!-- UserDefaults: stores age verification, premium status, saved places, preferences -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+
+    </array>
+
+</dict>
+</plist>

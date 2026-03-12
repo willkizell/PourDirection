@@ -64,19 +64,26 @@ struct PourDirectionApp: App {
                     }
                 }
 
-                // Request ATT after splash clears, then start ad SDK
+                // Request ATT after splash clears, then start ad SDK.
+                // refreshEntitlements() is called inside start()'s completion so the
+                // banner never requests an ad before the AdMob SDK is initialized.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) {
                     ATTrackingManager.requestTrackingAuthorization { _ in
                         #if canImport(GoogleMobileAds)
-                        MobileAds.shared.start { _ in }
+                        // testDeviceIdentifiers must be set BEFORE start()
                         MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
                             "1b3dc40f450db15529430fa5a35ef648"
                         ]
+                        MobileAds.shared.start { _ in
+                            Task { @MainActor in
+                                adsManager.refreshEntitlements()
+                            }
+                        }
+                        #else
+                        adsManager.refreshEntitlements()
                         #endif
                     }
                 }
-
-                adsManager.refreshEntitlements()
 
                 // Register notification delegate early
                 _ = NotificationManager.shared
