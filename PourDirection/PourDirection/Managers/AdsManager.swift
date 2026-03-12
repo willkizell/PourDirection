@@ -20,11 +20,21 @@ final class AdsManager: ObservableObject {
     @Published private(set) var isReady: Bool = false
     @Published private(set) var adsEnabled: Bool = true
 
-    /// Call at app launch. Replace with StoreKit entitlement checks later.
+    private var cancellable: AnyCancellable?
+
+    /// Call at app launch. Observes PurchaseManager so ads hide immediately on upgrade.
     func refreshEntitlements() {
-        // TODO: wire to StoreKit / server entitlements.
-        adsEnabled = Self.screenshotMode ? false : true
+        let pm = PurchaseManager.shared
+        adsEnabled = Self.screenshotMode ? false : !pm.isPremium
         isReady = true
+
+        cancellable = pm.$isPremium
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isPremium in
+                guard let self else { return }
+                self.adsEnabled = Self.screenshotMode ? false : !isPremium
+            }
     }
 
     static var previewReady: AdsManager {

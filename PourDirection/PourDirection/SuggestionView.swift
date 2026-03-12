@@ -92,7 +92,7 @@ struct SuggestionView: View {
         case .club:
             return "some music?"
         case .dispensary:
-            return "the couch (lol)?"
+            return "the couch?"
         case .liquorStore:
             return "da liquor store?"
         }

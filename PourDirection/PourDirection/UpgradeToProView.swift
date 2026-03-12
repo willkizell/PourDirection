@@ -13,6 +13,8 @@ import SwiftUI
 struct UpgradeToProView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var purchaseManager = PurchaseManager.shared
+    @State private var isPurchasing = false
 
     var body: some View {
         ZStack {
@@ -70,11 +72,30 @@ struct UpgradeToProView: View {
                 Spacer()
 
                 // ── CTA ──────────────────────────────────────────────────
-                PrimaryButton(title: "Upgrade to Pro") {
-                    // Future phase — StoreKit purchase flow
-                    dismiss()
+                PrimaryButton(title: isPurchasing ? "Processing..." : "Upgrade to Pro") {
+                    guard !isPurchasing else { return }
+                    isPurchasing = true
+                    Task {
+                        let success = await purchaseManager.purchasePremium()
+                        isPurchasing = false
+                        if success { dismiss() }
+                    }
                 }
+                .opacity(isPurchasing ? 0.6 : 1.0)
                 .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+
+                // ── Restore ──────────────────────────────────────────────
+                Button {
+                    Task {
+                        let restored = await purchaseManager.restorePurchases()
+                        if restored { dismiss() }
+                    }
+                } label: {
+                    Text("Restore Purchases")
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.secondary.opacity(0.5))
+                }
+                .padding(.top, AppSpacing.xs)
 
                 // ── Cancel anytime ───────────────────────────────────────
                 Text("Cancel anytime.")
