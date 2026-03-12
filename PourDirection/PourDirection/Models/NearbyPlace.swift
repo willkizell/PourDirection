@@ -92,6 +92,73 @@ struct Place: Identifiable, Hashable {
         self.weekdayDescriptions = weekdayDescriptions
     }
 
+    // MARK: - Display Name (Screenshot Mode)
+
+    /// Name shown in the UI. Returns a mock name when screenshot mode is active.
+    var displayName: String {
+        guard AdsManager.screenshotMode else { return name }
+        return Self.mockName(for: id, types: types)
+    }
+
+    private static let mockBarNames = [
+        "The Golden Tap", "Ember Lounge", "Driftwood Pub", "Copper & Oak",
+        "The Velvet Pour", "Northside Tavern", "Midnight Draft", "The Rusty Anchor"
+    ]
+    private static let mockRestaurantNames = [
+        "Basil & Vine", "The Nook Kitchen", "Harvest Table", "Saffron House",
+        "Fireside Bistro", "Olive & Stone", "The Corner Plate", "Dusk Eatery"
+    ]
+    private static let mockClubNames = [
+        "Pulse Nightclub", "Neon Room", "The Basement", "Vox Lounge"
+    ]
+    private static let mockDispoNames = [
+        "Green Leaf Co.", "Canopy Dispensary", "The Bud Shop", "West Coast Green"
+    ]
+    private static let mockLiquorNames = [
+        "The Bottle Shop", "Cellar & Cask", "Top Shelf Spirits", "Pour House Liquor"
+    ]
+
+    private static func mockName(for id: String, types: [String]) -> String {
+        let t = Set(types)
+        let pool: [String]
+        if t.contains("night_club")        { pool = mockClubNames }
+        else if t.contains("bar")          { pool = mockBarNames }
+        else if t.contains("liquor_store") { pool = mockLiquorNames }
+        else if t.contains("dispensary")   { pool = mockDispoNames }
+        else if t.contains("restaurant")   { pool = mockRestaurantNames }
+        else                               { pool = mockBarNames }
+        let hash = abs(id.hashValue)
+        return pool[hash % pool.count]
+    }
+
+    /// Category-based mock name lookup — used by MapItem.displayName.
+    static func mockName(forID id: String, category: PlaceCategory) -> String {
+        let pool: [String]
+        switch category {
+        case .bar:         pool = mockBarNames
+        case .restaurant:  pool = mockRestaurantNames
+        case .club:        pool = mockClubNames
+        case .dispensary:  pool = mockDispoNames
+        case .liquorStore: pool = mockLiquorNames
+        }
+        let hash = abs(id.hashValue)
+        return pool[hash % pool.count]
+    }
+
+    // MARK: - Inferred Category
+
+    /// Best-guess category derived from Google `types` array.
+    /// Returns nil for places created without type info (e.g. home location).
+    var inferredCategory: PlaceCategory? {
+        let t = Set(types)
+        if t.contains("night_club")   { return .club }
+        if t.contains("bar")          { return .bar }
+        if t.contains("liquor_store") { return .liquorStore }
+        if t.contains("dispensary")   { return .dispensary }
+        if t.contains("restaurant")   { return .restaurant }
+        return nil
+    }
+
     // MARK: - Opening Hours Helpers
 
     /// Today's hours extracted from weekdayDescriptions (e.g. "11:00 AM – 2:00 AM").

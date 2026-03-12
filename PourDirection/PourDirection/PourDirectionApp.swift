@@ -8,6 +8,7 @@
 
 import SwiftUI
 import CoreLocation
+import AppTrackingTransparency
 #if canImport(GoogleMobileAds)
 import GoogleMobileAds
 #endif
@@ -63,13 +64,17 @@ struct PourDirectionApp: App {
                     }
                 }
 
-                #if canImport(GoogleMobileAds)
-                MobileAds.shared.start { _ in }
-                // Register this device for test ads (update if reinstalling the app).
-                MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
-                    "1b3dc40f450db15529430fa5a35ef648"
-                ]
-                #endif
+                // Request ATT after splash clears, then start ad SDK
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) {
+                    ATTrackingManager.requestTrackingAuthorization { _ in
+                        #if canImport(GoogleMobileAds)
+                        MobileAds.shared.start { _ in }
+                        MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
+                            "1b3dc40f450db15529430fa5a35ef648"
+                        ]
+                        #endif
+                    }
+                }
 
                 adsManager.refreshEntitlements()
 

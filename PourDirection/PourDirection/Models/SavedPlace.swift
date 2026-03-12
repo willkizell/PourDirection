@@ -22,6 +22,11 @@ struct SavedPlace: Identifiable, Codable, Equatable {
 
     // MARK: - Helpers
 
+    var displayName: String {
+        guard AdsManager.screenshotMode, let cat = category else { return name }
+        return Place.mockName(forID: id, category: cat)
+    }
+
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }

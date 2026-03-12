@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import StoreKit
 
 // MARK: - FAQ Item
 
@@ -22,6 +23,7 @@ struct HelpView: View {
 
     let onBack: () -> Void
 
+    @Environment(\.requestReview) private var requestReview
     @State private var expandedID: UUID? = nil
 
     private let faqs: [FAQItem] = [
@@ -126,23 +128,26 @@ struct HelpView: View {
                             contactRow(
                                 icon: "envelope",
                                 title: "Contact Support",
-                                subtitle: "support@pourdirection.com"
+                                subtitle: "support@pourdirection.com",
+                                action: openSupportEmail
                             )
                             contactRow(
                                 icon: "bubble.left",
                                 title: "Send Feedback",
-                                subtitle: "Help us improve the app"
+                                subtitle: "Help us improve the app",
+                                action: openFeedbackEmail
                             )
                             contactRow(
                                 icon: "star",
                                 title: "Rate PourDirection",
-                                subtitle: "Leave a review on the App Store"
+                                subtitle: "Leave a review on the App Store",
+                                action: { requestReview() }
                             )
                         }
                         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
 
                         // ── Version ──────────────────────────────────────────
-                        Text("PourDirection v1.0.0")
+                        Text("PourDirection v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                             .font(AppTypography.caption)
                             .foregroundColor(AppColors.secondary.opacity(0.2))
                             .padding(.top, AppSpacing.xl)
@@ -155,10 +160,8 @@ struct HelpView: View {
     }
 
     // ── Contact Row ──────────────────────────────────────────────────────
-    private func contactRow(icon: String, title: String, subtitle: String) -> some View {
-        Button {
-            // Future phase — deep links to mail, App Store, etc.
-        } label: {
+    private func contactRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack(spacing: AppSpacing.sm) {
                 Image(systemName: icon)
                     .font(.system(size: 16))
@@ -186,6 +189,24 @@ struct HelpView: View {
             .cornerRadius(AppRadius.md)
         }
         .buttonStyle(.plain)
+    }
+
+    // ── Actions ──────────────────────────────────────────────────────────
+
+    private func openSupportEmail() {
+        let subject = "PourDirection Support Request"
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "mailto:support@pourdirection.com?subject=\(subject)") {
+            UIApplication.shared.open(url)
+        }
+    }
+
+    private func openFeedbackEmail() {
+        let subject = "PourDirection Feedback"
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "mailto:feedback@pourdirection.com?subject=\(subject)") {
+            UIApplication.shared.open(url)
+        }
     }
 }
 

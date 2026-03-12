@@ -241,7 +241,7 @@ struct SuggestionView: View {
             VStack(alignment: .leading, spacing: AppSpacing.xs) {
 
                 HStack(alignment: .center, spacing: AppSpacing.xs) {
-                    Text(place.name)
+                    Text(place.displayName)
                         .font(AppTypography.header)
                         .foregroundColor(AppColors.secondary)
                         .lineLimit(1)

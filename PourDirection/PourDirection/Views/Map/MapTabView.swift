@@ -59,6 +59,37 @@ struct MapTabView: View {
         }
     }
 
+    /// Same-category places sorted by distance (closest first).
+    private func sameCategoryPlaces(for item: MapItem) -> [MapItem] {
+        let loc = locationManager.currentLocation
+        return places
+            .filter { $0.category == item.category }
+            .sorted { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) < ($1.distance(from: loc) ?? .greatestFiniteMagnitude) }
+    }
+
+    /// Navigate to the next/previous place of the same category.
+    private func navigateSheet(direction: Int) {
+        guard let current = selectedItem else { return }
+        let sorted = sameCategoryPlaces(for: current)
+        guard let idx = sorted.firstIndex(where: { $0.id == current.id }) else { return }
+        let newIdx = idx + direction
+        guard newIdx >= 0, newIdx < sorted.count else { return }
+        let next = sorted[newIdx]
+
+        // Use the existing selectItem dance (brief dismiss → re-present)
+        selectItem(next)
+
+        // Pan map to the new place
+        withAnimation(.easeInOut(duration: 0.4)) {
+            cameraPosition = .region(
+                MKCoordinateRegion(
+                    center: next.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.015, longitudeDelta: 0.015)
+                )
+            )
+        }
+    }
+
     private func selectItem(_ place: MapItem) {
         if selectedItem?.id == place.id { return }
         if selectedItem != nil {
@@ -98,7 +129,7 @@ struct MapTabView: View {
                 UserAnnotation()
 
                 ForEach(places) { place in
-                    Annotation(place.name, coordinate: place.coordinate, anchor: .bottom) {
+                    Annotation(place.displayName, coordinate: place.coordinate, anchor: .bottom) {
                         MapPinView(
                             category: place.category,
                             isClosed: !(place.isOpen ?? true)
@@ -230,7 +261,14 @@ struct MapTabView: View {
                     let target = place
                     selectedItem = nil
                     onLetsGo(target)
-                }
+                },
+                categoryIndex: {
+                    let sorted = sameCategoryPlaces(for: place)
+                    return sorted.firstIndex(where: { $0.id == place.id })
+                }(),
+                categoryTotal: sameCategoryPlaces(for: place).count,
+                onSwipeLeft:  { navigateSheet(direction: -1) },
+                onSwipeRight: { navigateSheet(direction:  1) }
             )
             .id(selectedItem?.id)
             .presentationDetents(

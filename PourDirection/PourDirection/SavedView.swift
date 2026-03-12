@@ -144,7 +144,7 @@ struct SavedView: View {
 
                 // Info
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(saved.name)
+                    Text(saved.displayName)
                         .font(AppTypography.bodyMedium)
                         .foregroundColor(AppColors.secondary)
                         .lineLimit(1)

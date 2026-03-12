@@ -70,6 +70,11 @@ struct CompassActiveView: View {
         place.distance(from: locationManager.currentLocation)
     }
 
+    /// Category-specific accent for the header — falls back to brand gold.
+    private var categoryAccent: Color {
+        place.inferredCategory?.color ?? AppColors.primary
+    }
+
     // MARK: - Alignment Level
 
     enum AlignmentLevel: Equatable {
@@ -109,23 +114,28 @@ struct CompassActiveView: View {
                         Spacer()
                         Text(Place.formatDistance(place.distance(from: locationManager.currentLocation)))
                             .font(AppTypography.bodySmall)
-                            .foregroundColor(AppColors.primary)
+                            .foregroundColor(categoryAccent)
                             .padding(.horizontal, AppSpacing.sm)
                             .padding(.vertical, 3)
                             .background(
                                 Capsule()
-                                    .fill(AppColors.primary.opacity(0.12))
+                                    .fill(categoryAccent.opacity(0.12))
                             )
                             .overlay(
                                 Capsule()
-                                    .stroke(AppColors.primary.opacity(0.3), lineWidth: 0.5)
+                                    .stroke(categoryAccent.opacity(0.3), lineWidth: 0.5)
                             )
                     }
-                    Text(place.name)
+                    Text(place.displayName)
                         .font(AppTypography.titleSmall)
                         .foregroundColor(AppColors.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .lineLimit(2)
+                        .padding(.leading, AppSpacing.sm)
+                        .overlay(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(categoryAccent)
+                                .frame(width: 3)
+                        }
 
                     // Closed status — subtle indicator, does not block navigation
                     if place.isOpenNow == false {
@@ -142,9 +152,13 @@ struct CompassActiveView: View {
                     }
                 }
                 .padding(.horizontal, AppSpacing.screenHorizontalPadding)
-                .padding(.top, AppSpacing.xxl)
+                .padding(.top, AppSpacing.md)
 
+                // Push compass below center — 3:1 ratio with bottom spacer
+                Color.clear.frame(height: 0)
                 Spacer()
+                Spacer()
+
 
                 // ── Compass ─────────────────────────────────────────────────
                 ZStack {
@@ -191,7 +205,7 @@ struct CompassActiveView: View {
                 Text(alignmentLabel)
                     .font(AppTypography.caption)
                     .foregroundColor(displayedAlignment.color.opacity(0.7))
-                    .padding(.top, AppSpacing.md)
+                    .padding(.top, AppSpacing.sm)
                     .animation(.easeInOut(duration: 0.3), value: displayedAlignment)
 
                 Spacer()

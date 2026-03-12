@@ -13,8 +13,14 @@ struct MapItemBottomSheet: View {
     let place: MapItem
     let isExpanded: Bool
     let onLetsGo: () -> Void
+    var categoryIndex: Int?  = nil
+    var categoryTotal: Int?  = nil
+    var onSwipeLeft:  (() -> Void)? = nil
+    var onSwipeRight: (() -> Void)? = nil
 
     @Environment(LocationManager.self) private var locationManager
+    @GestureState private var dragOffset: CGFloat = 0
+    @State private var swipeTriggered = false
 
     private var accent: Color { place.category.color }
 
@@ -56,7 +62,7 @@ struct MapItemBottomSheet: View {
 
                     // Name + category badge
                     HStack(alignment: .top) {
-                        Text(place.name)
+                        Text(place.displayName)
                             .font(AppTypography.header)
                             .foregroundColor(AppColors.secondary)
                             .lineLimit(2)
@@ -156,15 +162,50 @@ struct MapItemBottomSheet: View {
                 .padding(.horizontal, AppSpacing.lg)
                 .padding(.top, AppSpacing.lg)
 
-                // ── CTA ───────────────────────────────────────────────────────
+                // ── Counter + CTA ─────────────────────────────────────────────
+                if let idx = categoryIndex, let total = categoryTotal, total > 1 {
+                    HStack(spacing: AppSpacing.xs) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(accent.opacity(idx > 0 ? 0.6 : 0.2))
+                        Text("\(idx + 1) of \(total)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(AppColors.secondary.opacity(0.4))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(accent.opacity(idx < total - 1 ? 0.6 : 0.2))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, AppSpacing.sm)
+                }
+
                 PrimaryButton(title: "Let's Go!", color: accent, action: onLetsGo)
                     .padding(.horizontal, AppSpacing.lg)
-                    .padding(.top, AppSpacing.xl)
+                    .padding(.top, (categoryIndex != nil && (categoryTotal ?? 0) > 1) ? AppSpacing.sm : AppSpacing.xl)
                     .padding(.bottom, AppSpacing.md)
             }
             .animation(.easeInOut(duration: 0.25), value: isExpanded)
         }
         .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 40)
+                .updating($dragOffset) { value, state, _ in
+                    state = value.translation.width
+                }
+                .onEnded { value in
+                    let horizontal = value.translation.width
+                    let vertical   = value.translation.height
+                    // Only trigger if swipe is mostly horizontal
+                    guard abs(horizontal) > abs(vertical) * 1.5,
+                          abs(horizontal) > 60 else { return }
+                    if horizontal < 0 {
+                        onSwipeRight?()    // swipe left → next
+                    } else {
+                        onSwipeLeft?()     // swipe right → previous
+                    }
+                }
+        )
         .preferredColorScheme(.dark)
     }
 

@@ -67,6 +67,12 @@ struct MapItem: Identifiable, Hashable {
 
     var displayCategory: String { category.rawValue }
 
+    /// Name shown in the UI. Returns a mock name when screenshot mode is active.
+    var displayName: String {
+        guard AdsManager.screenshotMode else { return name }
+        return Place.mockName(forID: id, category: category)
+    }
+
     /// Compute distance from a user location — never stored.
     func distance(from location: CLLocation?) -> CLLocationDistance? {
         guard let location else { return nil }
