@@ -128,7 +128,7 @@ struct HelpView: View {
                             contactRow(
                                 icon: "envelope",
                                 title: "Contact Support",
-                                subtitle: "support@pourdirection.com",
+                                subtitle: "pourdirection@gmail.com",
                                 action: openSupportEmail
                             )
                             contactRow(
@@ -142,6 +142,12 @@ struct HelpView: View {
                                 title: "Rate PourDirection",
                                 subtitle: "Leave a review on the App Store",
                                 action: { requestReview() }
+                            )
+                            contactRow(
+                                icon: "camera",
+                                title: "Follow on Instagram",
+                                subtitle: "@pourdirection",
+                                action: openInstagram
                             )
                         }
                         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
@@ -196,7 +202,7 @@ struct HelpView: View {
     private func openSupportEmail() {
         let subject = "PourDirection Support Request"
             .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        if let url = URL(string: "mailto:support@pourdirection.com?subject=\(subject)") {
+        if let url = URL(string: "mailto:pourdirection@gmail.com?subject=\(subject)") {
             UIApplication.shared.open(url)
         }
     }
@@ -204,8 +210,17 @@ struct HelpView: View {
     private func openFeedbackEmail() {
         let subject = "PourDirection Feedback"
             .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        if let url = URL(string: "mailto:feedback@pourdirection.com?subject=\(subject)") {
+        if let url = URL(string: "mailto:pourdirection@gmail.com?subject=\(subject)") {
             UIApplication.shared.open(url)
+        }
+    }
+
+    private func openInstagram() {
+        if let appURL = URL(string: "instagram://user?username=pourdirection"),
+           UIApplication.shared.canOpenURL(appURL) {
+            UIApplication.shared.open(appURL)
+        } else if let webURL = URL(string: "https://instagram.com/pourdirection") {
+            UIApplication.shared.open(webURL)
         }
     }
 }

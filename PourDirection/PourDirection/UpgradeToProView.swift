@@ -4,17 +4,21 @@
 //
 //  Bottom sheet upsell for PourPro membership.
 //  Presented as a .sheet from ProfileView when "Remove Ads" is tapped.
-//  The tagline floats at the top of the sheet (inside, so it's never dimmed).
-//  All actions are mock for now — wire to StoreKit when ready.
+//  Wired to StoreKit 2 via PurchaseManager. Price pulled live from App Store Connect.
 //
 
 import SwiftUI
+import StoreKit
 
 struct UpgradeToProView: View {
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var purchaseManager = PurchaseManager.shared
     @State private var isPurchasing = false
+
+    private var priceString: String {
+        purchaseManager.product?.displayPrice ?? "$9.99"
+    }
 
     var body: some View {
         ZStack {
@@ -59,7 +63,7 @@ struct UpgradeToProView: View {
                         .foregroundColor(AppColors.secondary)
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("$9.99 per year")
+                        Text("\(priceString) per year")
                             .font(AppTypography.header)
                             .foregroundColor(AppColors.secondary)
                         Text("That's less than one drink.")
@@ -107,6 +111,7 @@ struct UpgradeToProView: View {
 
         }
         .preferredColorScheme(.dark)
+        .task { await purchaseManager.loadProduct() }
     }
 
     // ── Benefit Row ──────────────────────────────────────────────────────

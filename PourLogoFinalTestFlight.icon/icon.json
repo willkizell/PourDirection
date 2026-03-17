@@ -1,0 +1,179 @@
+{
+  "fill" : "system-dark",
+  "groups" : [
+    {
+      "hidden" : true,
+      "layers" : [
+        {
+          "image-name" : "Ellipse 199.png",
+          "name" : "Ellipse 199",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "image-name" : "Ellipse 202.png",
+          "name" : "Ellipse 202",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "image-name" : "Ellipse 201.png",
+          "name" : "Ellipse 201",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "hidden" : false,
+      "layers" : [
+        {
+          "hidden" : true,
+          "image-name" : "BereCapLogoTest.png",
+          "name" : "BereCapLogoTest",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              -4.5
+            ]
+          }
+        },
+        {
+          "blend-mode" : "darken",
+          "glass" : true,
+          "hidden" : true,
+          "image-name" : "PourLogoFinalTestFlight-iOS-Default-1024x1024@1x.png",
+          "name" : "PourLogoFinalTestFlight-iOS-Default-1024x1024@1x",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "hidden" : true,
+          "image-name" : "Group 259.png",
+          "name" : "Group 259",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              -25
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "hidden" : false,
+      "layers" : [
+        {
+          "hidden" : true,
+          "image-name" : "Vector.png",
+          "name" : "Vector"
+        },
+        {
+          "hidden" : true,
+          "image-name" : "Group 256.png",
+          "name" : "Group 256",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -12.73828125,
+              -34.33203125
+            ]
+          }
+        },
+        {
+          "hidden" : true,
+          "image-name" : "1Vector 2.png",
+          "name" : "1Vector 2"
+        },
+        {
+          "hidden" : true,
+          "image-name" : "Polygon 28.png",
+          "name" : "Polygon 28",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -157.25,
+              -407.3515625
+            ]
+          }
+        },
+        {
+          "image-name" : "Group 265.png",
+          "name" : "Group 265",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              -12.5
+            ]
+          }
+        },
+        {
+          "hidden" : true,
+          "image-name" : "Group 2.png",
+          "name" : "Group 2",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              0,
+              -14.5
+            ]
+          }
+        }
+      ],
+      "name" : "Group",
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

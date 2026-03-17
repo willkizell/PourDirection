@@ -281,8 +281,8 @@ struct MapTabView: View {
             .interactiveDismissDisabled(false)
         }
         // Reset detent to compact when a new pin is selected
-        .onChange(of: selectedItem?.id) { _, newID in
-            if let newID, let place = selectedItem {
+        .onChange(of: selectedItem?.id) { _, _ in
+            if let place = selectedItem {
                 clampDetent(for: place)
             }
             onAccentChange?(controlTint)

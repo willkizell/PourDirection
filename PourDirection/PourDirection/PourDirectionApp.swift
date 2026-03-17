@@ -85,6 +85,9 @@ struct PourDirectionApp: App {
                     }
                 }
 
+                // Verify StoreKit entitlements on every launch (handles renewals/refunds)
+                Task { await PurchaseManager.shared.refreshPurchaseStatus() }
+
                 // Register notification delegate early
                 _ = NotificationManager.shared
 

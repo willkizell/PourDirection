@@ -251,6 +251,20 @@ struct Place: Identifiable, Hashable {
         return formatter.string(from: measurement)
     }
 
+    /// Walking time estimate at 3 km/h — accounts for route detours, crossings, and real-world pace.
+    /// Driving time estimate based on average 30 km/h city speed.
+    /// Returns "Nearby" for < 100 m, otherwise "X min" or "X hr Y min".
+    static func formatWalkingTime(_ meters: CLLocationDistance?, driving: Bool = false) -> String {
+        guard let meters, meters >= 100 else { return "Nearby" }
+        let speedMetersPerMin: Double = driving ? 500 : 50   // 30 km/h or 3 km/h
+        let minutes = Int((meters / speedMetersPerMin).rounded())
+        if minutes < 1 { return "< 1 min" }
+        if minutes < 60 { return "\(minutes) min" }
+        let hours = minutes / 60
+        let remaining = minutes % 60
+        return remaining == 0 ? "\(hours) hr" : "\(hours) hr \(remaining) min"
+    }
+
     /// True bearing (degrees clockwise from north) from `from` to `to`.
     static func bearing(from: CLLocationCoordinate2D,
                         to: CLLocationCoordinate2D) -> Double {

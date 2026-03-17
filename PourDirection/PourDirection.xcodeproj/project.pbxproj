@@ -7,16 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		635C827A2F6794C200FC33C8 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 635C82792F6794C200FC33C8 /* Supabase */; };
 		63F34F622F4C2FD900328FA6 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F612F4C2FD900328FA6 /* Auth */; };
 		63F34F642F4C2FD900328FA6 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F632F4C2FD900328FA6 /* Functions */; };
 		63F34F662F4C2FD900328FA6 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F652F4C2FD900328FA6 /* PostgREST */; };
 		63F34F682F4C2FD900328FA6 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F672F4C2FD900328FA6 /* Realtime */; };
 		63F34F6A2F4C2FD900328FA6 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F692F4C2FD900328FA6 /* Storage */; };
-		63F34F6D2F4C306A00328FA6 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34F6C2F4C306A00328FA6 /* Supabase */; };
 		63F34FE62F4D954E00328FA6 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 63F34FE52F4D954E00328FA6 /* GoogleMobileAds */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		635C82722F6790C400FC33C8 /* StoreKitTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKitTest.framework; path = Platforms/iPhoneOS.platform/Developer/Library/Frameworks/StoreKitTest.framework; sourceTree = DEVELOPER_DIR; };
 		63F34EEA2F4AD44900328FA6 /* PourDirection.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PourDirection.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -46,9 +47,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				635C827A2F6794C200FC33C8 /* Supabase in Frameworks */,
 				63F34F662F4C2FD900328FA6 /* PostgREST in Frameworks */,
 				63F34F642F4C2FD900328FA6 /* Functions in Frameworks */,
-				63F34F6D2F4C306A00328FA6 /* Supabase in Frameworks */,
 				63F34F622F4C2FD900328FA6 /* Auth in Frameworks */,
 				63F34F6A2F4C2FD900328FA6 /* Storage in Frameworks */,
 				63F34F682F4C2FD900328FA6 /* Realtime in Frameworks */,
@@ -79,6 +80,7 @@
 		63F34F6B2F4C306A00328FA6 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				635C82722F6790C400FC33C8 /* StoreKitTest.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -108,8 +110,8 @@
 				63F34F652F4C2FD900328FA6 /* PostgREST */,
 				63F34F672F4C2FD900328FA6 /* Realtime */,
 				63F34F692F4C2FD900328FA6 /* Storage */,
-				63F34F6C2F4C306A00328FA6 /* Supabase */,
 				63F34FE52F4D954E00328FA6 /* GoogleMobileAds */,
+				635C82792F6794C200FC33C8 /* Supabase */,
 			);
 			productName = PourDirection;
 			productReference = 63F34EEA2F4AD44900328FA6 /* PourDirection.app */;
@@ -416,6 +418,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		635C82792F6794C200FC33C8 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 63F34F602F4C2FD900328FA6 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
 		63F34F612F4C2FD900328FA6 /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 63F34F602F4C2FD900328FA6 /* XCRemoteSwiftPackageReference "supabase-swift" */;
@@ -440,11 +447,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 63F34F602F4C2FD900328FA6 /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Storage;
-		};
-		63F34F6C2F4C306A00328FA6 /* Supabase */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 63F34F602F4C2FD900328FA6 /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
 		};
 		63F34FE52F4D954E00328FA6 /* GoogleMobileAds */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -100,7 +100,7 @@ struct RootContainerView: View {
             )
         }
         // Reset push stack and accent when the user switches tabs
-        .onChange(of: selectedTab) { _ in
+        .onChange(of: selectedTab) { _, _ in
             navigationPath = NavigationPath()
             activeRoute    = nil
             tabBarAccent   = AppColors.primary

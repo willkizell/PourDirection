@@ -71,6 +71,11 @@ struct SuggestionView: View {
         return items[currentIndex]
     }
 
+    private var locationDenied: Bool {
+        locationManager.authorizationStatus == .denied ||
+        locationManager.authorizationStatus == .restricted
+    }
+
     private var activeCategory: PlaceCategory? {
         if let item = currentItem { return item.category }
         if case let .category(category) = mode { return category }
@@ -123,7 +128,9 @@ struct SuggestionView: View {
 
                 // ── Content ───────────────────────────────────────────────────
                 ZStack(alignment: .top) {
-                    if isLoading {
+                    if locationDenied {
+                        locationDeniedView
+                    } else if isLoading {
                         ProgressView()
                             .tint(AppColors.primary)
 
@@ -283,12 +290,13 @@ struct SuggestionView: View {
 
                     let dist = place.distance(from: locationManager.currentLocation)
                     let beyondWalking = (dist ?? 0) > distancePrefs.walkingDistanceMeters
-                    let distIcon = (category == .club && beyondWalking) ? "car.fill" : "figure.walk"
+                    let isDriving = category == .club && beyondWalking
+                    let distIcon = isDriving ? "car.fill" : "figure.walk"
                     HStack(spacing: 4) {
                         Image(systemName: distIcon)
                             .font(.system(size: 11))
                             .foregroundColor(accent)
-                        Text(Place.formatDistance(dist))
+                        Text(Place.formatWalkingTime(dist, driving: isDriving))
                             .font(AppTypography.caption)
                             .foregroundColor(AppColors.secondary.opacity(0.7))
                             .lineLimit(1)
@@ -394,6 +402,52 @@ struct SuggestionView: View {
                     removal:   .move(edge: .leading).combined(with: .opacity)
                 )
         )
+    }
+
+    // MARK: - Location Denied View
+
+    private var locationDeniedView: some View {
+        VStack(spacing: AppSpacing.lg) {
+            Spacer()
+            Image(systemName: "location.slash")
+                .font(.system(size: 40, weight: .light))
+                .foregroundColor(accent.opacity(0.7))
+            VStack(spacing: AppSpacing.xs) {
+                Text("Location Access Required")
+                    .font(AppTypography.bodyMedium)
+                    .foregroundColor(AppColors.secondary.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                Text("PourDirection needs your location to find nearby places.")
+                    .font(AppTypography.caption)
+                    .foregroundColor(AppColors.secondary.opacity(0.55))
+                    .multilineTextAlignment(.center)
+            }
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: AppSpacing.xs) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("Enable in Settings")
+                        .font(AppTypography.bodySmall)
+                }
+                .foregroundColor(accent)
+                .padding(.horizontal, AppSpacing.md)
+                .padding(.vertical, AppSpacing.sm)
+                .frame(maxWidth: .infinity)
+                .background(accent.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppRadius.md)
+                        .stroke(accent.opacity(0.35), lineWidth: 0.75)
+                )
+                .cornerRadius(AppRadius.md)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+            Spacer()
+        }
     }
 
     // MARK: - End of Suggestions Card
@@ -581,7 +635,10 @@ struct SuggestionView: View {
     }
 
     private func load() async {
-        guard let loc = locationManager.currentLocation else { return }
+        guard let loc = locationManager.currentLocation else {
+            if locationDenied { isLoading = false }
+            return
+        }
         isLoading    = true
         errorMessage = nil
         do {

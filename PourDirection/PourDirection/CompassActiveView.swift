@@ -112,7 +112,7 @@ struct CompassActiveView: View {
                             .font(AppTypography.bodyMedium)
                             .foregroundColor(AppColors.secondary.opacity(0.5))
                         Spacer()
-                        Text(Place.formatDistance(place.distance(from: locationManager.currentLocation)))
+                        Text("\(Place.formatWalkingTime(distanceMeters, driving: showRideButton))  ·  \(Place.formatDistance(distanceMeters))")
                             .font(AppTypography.bodySmall)
                             .foregroundColor(categoryAccent)
                             .padding(.horizontal, AppSpacing.sm)
