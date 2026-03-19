@@ -9,6 +9,71 @@
 import SwiftUI
 import CoreLocation
 
+// MARK: - Cached Async Image
+
+struct CachedAsyncImage: View {
+    let url: URL?
+    let contentMode: ContentMode
+    let photoPlaceholder: AnyView
+    let cardPhotoHeight: CGFloat
+
+    @State private var image: UIImage?
+    @State private var isLoading = true
+
+    var body: some View {
+        ZStack {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: cardPhotoHeight)
+                    .clipped()
+            } else if isLoading {
+                photoPlaceholder
+                    .frame(maxWidth: .infinity)
+                    .frame(height: cardPhotoHeight)
+                    .overlay(ProgressView().tint(AppColors.primary))
+            } else {
+                photoPlaceholder
+                    .frame(maxWidth: .infinity)
+                    .frame(height: cardPhotoHeight)
+            }
+        }
+        .task {
+            await loadImage()
+        }
+    }
+
+    private func loadImage() async {
+        guard let url else {
+            isLoading = false
+            return
+        }
+
+        // Check memory cache first
+        if let cachedImage = await ImageCacheManager.shared.cachedImage(for: url) {
+            self.image = cachedImage
+            self.isLoading = false
+            return
+        }
+
+        // Download from network
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let uiImage = UIImage(data: data) {
+                // Cache the image
+                await ImageCacheManager.shared.cache(image: uiImage, for: url)
+                self.image = uiImage
+            }
+        } catch {
+            // Image failed to load
+        }
+
+        isLoading = false
+    }
+}
+
 struct SuggestionView: View {
 
     enum Mode {
@@ -220,29 +285,15 @@ struct SuggestionView: View {
     private func placeCard(_ place: Place, category: PlaceCategory) -> some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            
+
             // ── Hero Photo ────────────────────────────────────────────────────
-                        AsyncImage(url: place.photoURL) { phase in
-                            switch phase {
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(maxWidth: .infinity) // Replaced strict width to force edge-to-edge
-                                    .frame(height: cardPhotoHeight)
-                                    .clipped()
-                            case .failure:
-                                photoPlaceholder
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: cardPhotoHeight)
-                            default:
-                                photoPlaceholder
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: cardPhotoHeight)
-                                    .overlay(ProgressView().tint(AppColors.primary))
-                            }
-                        }
-                        .layoutPriority(0)
+            CachedAsyncImage(
+                url: place.photoURL,
+                contentMode: .fill,
+                photoPlaceholder: AnyView(photoPlaceholder),
+                cardPhotoHeight: cardPhotoHeight
+            )
+            .layoutPriority(0)
 
             // ── Info ──────────────────────────────────────────────────────────
             VStack(alignment: .leading, spacing: AppSpacing.xs) {

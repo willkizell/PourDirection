@@ -42,6 +42,12 @@ final class NotificationManager: NSObject {
     /// 45 minutes filters out quick drive-throughs.
     private let newCityDwellSeconds: TimeInterval = 45 * 60
 
+    // MARK: - Reverse Geocoding Throttling
+
+    private var geocoder: CLGeocoder?
+    private var lastGeocodeTime: Date = .distantPast
+    private let geocodeThrottleInterval: TimeInterval = 60  // Min 60 seconds between requests
+
     // MARK: - Public API
 
     /// Check current authorization status.
@@ -97,9 +103,18 @@ final class NotificationManager: NSObject {
     /// Call this from the significant-location-change delegate (including background launches).
     /// Reverse-geocodes the location, checks if the city changed, and fires a notification
     /// after the user has been in the new city for at least `newCityDwellSeconds`.
+    /// Throttled to prevent main-thread blocking from concurrent reverse-geocode requests.
     func handleSignificantLocationChange(_ location: CLLocation) {
-        let geocoder = CLGeocoder()
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
+        // Throttle: only reverse-geocode if 60+ seconds have passed since last request
+        guard Date().timeIntervalSince(lastGeocodeTime) >= geocodeThrottleInterval else { return }
+
+        // Cancel any pending geocode request before starting a new one
+        geocoder?.cancelGeocode()
+
+        geocoder = CLGeocoder()
+        lastGeocodeTime = Date()
+
+        geocoder?.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
             guard let self,
                   let city = placemarks?.first?.locality,
                   !city.isEmpty else { return }

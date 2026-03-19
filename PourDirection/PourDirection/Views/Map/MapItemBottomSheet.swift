@@ -30,31 +30,32 @@ struct MapItemBottomSheet: View {
 
                 // ── Hero Photo — only when expanded ──────────────────────────
                 if isExpanded {
-                    Group {
-                        if let photoURL = place.photoURL {
-                            AsyncImage(url: photoURL) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 200)
-                                        .clipped()
-                                default:
+                    RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous)
+                        .fill(AppColors.cardSurface)
+                        .frame(height: 200)
+                        .overlay(
+                            Group {
+                                if let photoURL = place.photoURL {
+                                    AsyncImage(url: photoURL) { phase in
+                                        switch phase {
+                                        case .success(let image):
+                                            image
+                                                .resizable()
+                                                .scaledToFill()
+                                        default:
+                                            photoPlaceholder
+                                        }
+                                    }
+                                } else {
                                     photoPlaceholder
                                 }
                             }
-                            .frame(height: 200)
-                        } else {
-                            photoPlaceholder
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous))
-                    .padding(.horizontal, AppSpacing.lg)
-                    .padding(.top, AppSpacing.lg)
-                    .padding(.bottom, AppSpacing.sm)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.lg, style: .continuous))
+                        .padding(.horizontal, AppSpacing.lg)
+                        .padding(.top, AppSpacing.lg)
+                        .padding(.bottom, AppSpacing.sm)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
 
                 // ── Place Info ────────────────────────────────────────────────

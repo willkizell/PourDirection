@@ -149,6 +149,12 @@ struct HelpView: View {
                                 subtitle: "@pourdirection",
                                 action: openInstagram
                             )
+                            contactRow(
+                                icon: "play.rectangle",
+                                title: "Follow on TikTok",
+                                subtitle: "@pourdirection",
+                                action: openTikTok
+                            )
                         }
                         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
 
@@ -220,6 +226,15 @@ struct HelpView: View {
            UIApplication.shared.canOpenURL(appURL) {
             UIApplication.shared.open(appURL)
         } else if let webURL = URL(string: "https://instagram.com/pourdirection") {
+            UIApplication.shared.open(webURL)
+        }
+    }
+
+    private func openTikTok() {
+        if let appURL = URL(string: "tiktok://user?username=pourdirection"),
+           UIApplication.shared.canOpenURL(appURL) {
+            UIApplication.shared.open(appURL)
+        } else if let webURL = URL(string: "https://tiktok.com/@pourdirection") {
             UIApplication.shared.open(webURL)
         }
     }

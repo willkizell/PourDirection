@@ -71,9 +71,11 @@ struct PourDirectionApp: App {
                     ATTrackingManager.requestTrackingAuthorization { _ in
                         #if canImport(GoogleMobileAds)
                         // testDeviceIdentifiers must be set BEFORE start()
+                        #if DEBUG
                         MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
                             "1b3dc40f450db15529430fa5a35ef648"
                         ]
+                        #endif
                         MobileAds.shared.start { _ in
                             Task { @MainActor in
                                 adsManager.refreshEntitlements()

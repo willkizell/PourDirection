@@ -17,7 +17,6 @@ enum AppRoute: Hashable {
     case suggestions(category: PlaceCategory)
     case suggestionsMixed
     case compass(Place)
-    case editProfile
     case help
 }
 
@@ -40,7 +39,6 @@ struct RootContainerView: View {
     private var shouldHideAdBanner: Bool {
         if selectedTab == .profile { return true }
         if selectedTab == .map { return true }
-        if case .editProfile = activeRoute { return true }
         if case .help = activeRoute { return true }
         return false
     }
@@ -224,10 +222,6 @@ struct RootContainerView: View {
             // Compass is presented via fullScreenCover(item:), not as a pushed destination.
             let _ = place
             EmptyView()
-        case .editProfile:
-            EditProfileView(onBack: { navigationPath.removeLast() })
-                .onAppear    { activeRoute = .editProfile }
-                .onDisappear { activeRoute = nil }
         case .help:
             HelpView(onBack: { navigationPath.removeLast() })
                 .onAppear    { activeRoute = .help }

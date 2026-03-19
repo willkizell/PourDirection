@@ -1,11 +1,11 @@
 {
   "images" : [
     {
+      "filename" : "AppLogo_clean 1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "DropletTestPourLogoFinalTestFlight-iOS-Default-1024x1024@1x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },

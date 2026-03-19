@@ -206,11 +206,6 @@ struct AdBannerPlaceholderView: View {
         #if canImport(GoogleMobileAds)
         ZStack {
             Color.black
-            if !isLoaded {
-                Text("Ad Banner")
-                    .font(AppTypography.caption)
-                    .foregroundColor(AppColors.secondary.opacity(0.35))
-            }
             if adsManager.isReady {
                 AdMobBannerView(adUnitID: effectiveAdUnitID, isLoaded: $isLoaded)
             }
@@ -219,15 +214,7 @@ struct AdBannerPlaceholderView: View {
         .frame(height: 50)
         .cornerRadius(AppRadius.sm)
         #else
-        ZStack {
-            Color.black
-            Text("Ad Banner")
-                .font(AppTypography.caption)
-                .foregroundColor(AppColors.secondary.opacity(0.35))
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 50)
-        .cornerRadius(AppRadius.sm)
+        EmptyView()
         #endif
         }
     }

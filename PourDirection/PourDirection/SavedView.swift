@@ -22,10 +22,17 @@ struct SavedView: View {
 
     @State private var filter:        SavedFilter = .all
     @State private var showHomeSheet: Bool        = false
+    @State private var distanceCache: [String: CLLocationDistance] = [:]
+    @State private var cachedLocationKey: String = ""
 
     private enum SavedFilter: String, CaseIterable {
         case all    = "All"
         case nearby = "Nearby"
+    }
+
+    private func cacheKey(for location: CLLocation?) -> String {
+        guard let location else { return "none" }
+        return "\(Int(location.coordinate.latitude * 1000)),\(Int(location.coordinate.longitude * 1000))"
     }
 
     private var displayedPlaces: [SavedPlace] {
@@ -121,13 +128,24 @@ struct SavedView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .onChange(of: locationManager.currentLocation) { _, newLocation in
+            let newKey = cacheKey(for: newLocation)
+            // Recalculate distances only if location changed significantly
+            if newKey != cachedLocationKey {
+                cachedLocationKey = newKey
+                distanceCache.removeAll()
+                for saved in manager.savedPlaces {
+                    distanceCache[saved.id] = saved.distance(from: newLocation)
+                }
+            }
+        }
     }
 
     // MARK: - Saved Row
 
     private func savedRow(_ saved: SavedPlace) -> some View {
         let accent = saved.category?.color ?? AppColors.primary
-        let dist   = saved.distance(from: locationManager.currentLocation)
+        let dist   = distanceCache[saved.id] ?? saved.distance(from: locationManager.currentLocation)
         let isWalking = dist.map { $0 <= DistancePreferences.shared.walkingDistanceMeters } ?? false
 
         return Button(action: {

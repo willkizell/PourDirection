@@ -11,6 +11,7 @@
 import SwiftUI
 import UserNotifications
 import CoreLocation
+import StoreKit
 
 // MARK: - Profile View
 
@@ -120,8 +121,18 @@ struct ProfileView: View {
 
                         // ── Actions ───────────────────────────────────────
                         VStack(spacing: 0) {
-                            SettingsNavRow(icon: "crown", title: "Remove Ads") {
-                                showUpgradeSheet = true
+                            if PurchaseManager.shared.isPremium {
+                                SettingsNavRow(icon: "crown.fill", title: "PourPro Member", subtitle: "Manage Subscription") {
+                                    Task {
+                                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                                            try? await AppStore.showManageSubscriptions(in: windowScene)
+                                        }
+                                    }
+                                }
+                            } else {
+                                SettingsNavRow(icon: "crown", title: "Remove Ads") {
+                                    showUpgradeSheet = true
+                                }
                             }
                             SettingsNavRow(icon: "questionmark.circle", title: "Help", action: onHelp)
                         }

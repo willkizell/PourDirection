@@ -33,7 +33,15 @@ struct MapTabView: View {
     @State private var places: [MapItem] = []
     @State private var hasLoadedPlaces = false
     @State private var showDistanceSheet = false
+    @State private var placesByCategory: [PlaceCategory: [MapItem]] = [:]
+    @State private var distanceCache: [String: CLLocationDistance] = [:]
+    @State private var cachedLocationKey: String = ""
     private let distancePrefs = DistancePreferences.shared
+
+    private func cacheKey(for location: CLLocation?) -> String {
+        guard let location else { return "none" }
+        return "\(Int(location.coordinate.latitude * 1000)),\(Int(location.coordinate.longitude * 1000))"
+    }
 
     /// Accent color for map controls — matches selected pin's category, or brand default.
     private var controlTint: Color {
@@ -59,12 +67,15 @@ struct MapTabView: View {
         }
     }
 
-    /// Same-category places sorted by distance (closest first).
+    /// Same-category places sorted by distance (closest first) — uses cached category grouping and distances.
     private func sameCategoryPlaces(for item: MapItem) -> [MapItem] {
-        let loc = locationManager.currentLocation
-        return places
-            .filter { $0.category == item.category }
-            .sorted { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) < ($1.distance(from: loc) ?? .greatestFiniteMagnitude) }
+        guard let categoryPlaces = placesByCategory[item.category] else { return [] }
+
+        return categoryPlaces.sorted { place1, place2 in
+            let dist1 = distanceCache[place1.id] ?? place1.distance(from: locationManager.currentLocation) ?? .greatestFiniteMagnitude
+            let dist2 = distanceCache[place2.id] ?? place2.distance(from: locationManager.currentLocation) ?? .greatestFiniteMagnitude
+            return dist1 < dist2
+        }
     }
 
     /// Navigate to the next/previous place of the same category.
@@ -252,6 +263,22 @@ struct MapTabView: View {
         .onChange(of: locationManager.currentLocation) { _, newLocation in
             guard newLocation != nil, !hasLoadedPlaces else { return }
             Task { await fetchPlaces() }
+        }
+        // Update category grouping and distance cache when places change
+        .onChange(of: places) { _, newPlaces in
+            placesByCategory = Dictionary(grouping: newPlaces) { $0.category }
+            distanceCache.removeAll()
+        }
+        // Recalculate distances when location changes significantly
+        .onChange(of: locationManager.currentLocation) { _, newLocation in
+            let newKey = cacheKey(for: newLocation)
+            if newKey != cachedLocationKey {
+                cachedLocationKey = newKey
+                distanceCache.removeAll()
+                for place in places {
+                    distanceCache[place.id] = place.distance(from: newLocation)
+                }
+            }
         }
         .sheet(item: $selectedItem) { place in
             MapItemBottomSheet(
