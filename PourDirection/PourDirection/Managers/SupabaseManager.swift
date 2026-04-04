@@ -97,16 +97,18 @@ final class SupabaseManager {
         let lng: Double
         let type: String
         let radius: Double?
+        let openNow: Bool?
     }
 
     /// Fetches nearby places from the "nearby-places" Edge Function.
     /// `type` maps to Google Places API `includedTypes` (e.g. "bar", "restaurant").
     /// `radius` overrides the server-side default search radius (meters).
+    /// `openNow` filters to currently-open places only (used by SuggestionView).
     /// Returns decoded `Place` values ready for display.
-    /// Results are cached for 5 minutes keyed by type + ~1 km location grid + radius.
-    func fetchNearbyPlaces(lat: Double, lng: Double, type: String = "bar", radius: Double? = nil) async throws -> [Place] {
+    /// Results are cached for 5 minutes keyed by type + ~1 km location grid + radius + openNow.
+    func fetchNearbyPlaces(lat: Double, lng: Double, type: String = "bar", radius: Double? = nil, openNow: Bool = false) async throws -> [Place] {
         // Round to 2 decimal places (~1.1 km grid) for cache key
-        let key = "\(type)-\(String(format: "%.2f", lat))-\(String(format: "%.2f", lng))-\(Int(radius ?? 0))"
+        let key = "\(type)-\(String(format: "%.2f", lat))-\(String(format: "%.2f", lng))-\(Int(radius ?? 0))-\(openNow)"
 
         if let cached = await placesCache.get(key: key) {
             return cached
@@ -114,7 +116,7 @@ final class SupabaseManager {
 
         let response: NearbyPlacesResponse = try await invokeFunction(
             name: "nearby-places",
-            body: NearbyPlacesPayload(lat: lat, lng: lng, type: type, radius: radius)
+            body: NearbyPlacesPayload(lat: lat, lng: lng, type: type, radius: radius, openNow: openNow ? true : nil)
         )
         let places = response.places.map { Place(from: $0) }
         if let first = places.first {

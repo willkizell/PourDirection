@@ -601,15 +601,6 @@ struct SuggestionView: View {
 
     // MARK: - Load
 
-    // Resolve the type string to send to the Edge Function.
-    // Restaurants after 11 pm switch to a late-night type that includes fast food
-    // and filters to open-now places.
-    private func resolvedTypeString(for category: PlaceCategory) -> String {
-        guard category == .restaurant else { return category.googleIncludedType }
-        let hour = Calendar.current.component(.hour, from: Date())
-        return hour >= 23 ? "restaurantLateNight" : category.googleIncludedType
-    }
-
     private func fetchPlaces(for category: PlaceCategory, at loc: CLLocation) async throws -> [Place] {
         let searchRadius = category == .club
             ? distancePrefs.searchAreaMeters
@@ -618,8 +609,9 @@ struct SuggestionView: View {
         var fetched = try await SupabaseManager.shared.fetchNearbyPlaces(
             lat: loc.coordinate.latitude,
             lng: loc.coordinate.longitude,
-            type: resolvedTypeString(for: category),
-            radius: searchRadius
+            type: category.googleIncludedType,
+            radius: searchRadius,
+            openNow: true
         )
 
         if category == .club {

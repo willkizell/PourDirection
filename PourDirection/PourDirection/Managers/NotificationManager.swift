@@ -29,9 +29,13 @@ final class NotificationManager: NSObject {
 
     // MARK: - Identifiers
 
-    private let fridayID   = "com.pourdirection.notify.friday"
-    private let saturdayID = "com.pourdirection.notify.saturday"
-    private let newCityID  = "com.pourdirection.notify.newcity"
+    private let fridayID          = "com.pourdirection.notify.friday"
+    private let saturdayID        = "com.pourdirection.notify.saturday"
+    private let fridayLateID      = "com.pourdirection.notify.friday.late"
+    private let saturdayLateID    = "com.pourdirection.notify.saturday.late"
+    private let fridayMidnightID  = "com.pourdirection.notify.friday.midnight"
+    private let saturdayMidnightID = "com.pourdirection.notify.saturday.midnight"
+    private let newCityID         = "com.pourdirection.notify.newcity"
 
     // MARK: - UserDefaults Keys (new-city detection)
 
@@ -77,20 +81,58 @@ final class NotificationManager: NSObject {
     /// Replacing by identifier guarantees no duplicates even if called multiple times.
     func scheduleWeeklyNotifications() {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [fridayID, saturdayID])
+        center.removePendingNotificationRequests(withIdentifiers: [
+            fridayID, saturdayID,
+            fridayLateID, saturdayLateID,
+            fridayMidnightID, saturdayMidnightID
+        ])
 
+        // Friday 7 PM
         center.add(makeRequest(
             id:      fridayID,
-            weekday: 6,         // Friday (1 = Sunday)
-            hour:    18,        // 6:00 PM
-            body:    "It's Friday. Find something near you."
+            weekday: 6,
+            hour:    19,
+            body:    "🚨 It's FRIDAY!! Find something near you."
         ))
 
+        // Saturday 7 PM
         center.add(makeRequest(
             id:      saturdayID,
-            weekday: 7,         // Saturday
-            hour:    19,        // 7:00 PM
-            body:    "Going out tonight?"
+            weekday: 7,
+            hour:    19,
+            body:    "👀 It's Saturday!! You know what to do."
+        ))
+
+        // Friday 11 PM
+        center.add(makeRequest(
+            id:      fridayLateID,
+            weekday: 6,
+            hour:    23,
+            body:    "🍕 Hungry? Find somewhere to eat near you."
+        ))
+
+        // Saturday 11 PM
+        center.add(makeRequest(
+            id:      saturdayLateID,
+            weekday: 7,
+            hour:    23,
+            body:    "🍔 Getting hungry? See what's still open."
+        ))
+
+        // Friday midnight (Saturday 12 AM)
+        center.add(makeRequest(
+            id:      fridayMidnightID,
+            weekday: 7,
+            hour:    0,
+            body:    "Still out? Find what's open near you 🍺🍕!!"
+        ))
+
+        // Saturday midnight (Sunday 12 AM)
+        center.add(makeRequest(
+            id:      saturdayMidnightID,
+            weekday: 1,
+            hour:    0,
+            body:    "🚨 NIGHT'S NOT OVER!! See what's around you."
         ))
     }
 

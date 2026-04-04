@@ -39,6 +39,9 @@ struct CompassActiveView: View {
     @State private var prevDelta: Double = 180
     @State private var lastHaptic: Date = .distantPast
 
+    // ── Closed Alert ─────────────────────────────────────────────────────────
+    @State private var showClosedAlert: Bool = false
+
     // MARK: - Computed Navigation State
 
     /// Bearing from current location to destination (0–360, clockwise from north).
@@ -137,18 +140,25 @@ struct CompassActiveView: View {
                                 .frame(width: 3)
                         }
 
-                    // Closed status — subtle indicator, does not block navigation
+                    // Closed status pill
                     if place.isOpenNow == false {
-                        HStack(spacing: 4) {
-                            Text("Closed right now")
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color(hex: "EF4444"))
+                                .frame(width: 6, height: 6)
+                            Text("Closed")
                                 .font(AppTypography.caption)
-                                .foregroundColor(Color(hex: "EF4444").opacity(0.7))
+                                .foregroundColor(Color(hex: "EF4444"))
                             if let opens = place.opensAt {
                                 Text("· Opens \(opens)")
                                     .font(AppTypography.caption)
-                                    .foregroundColor(AppColors.secondary.opacity(0.35))
+                                    .foregroundColor(AppColors.secondary.opacity(0.4))
                             }
                         }
+                        .padding(.horizontal, AppSpacing.sm)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color(hex: "EF4444").opacity(0.12)))
+                        .overlay(Capsule().stroke(Color(hex: "EF4444").opacity(0.3), lineWidth: 0.5))
                     }
                 }
                 .padding(.horizontal, AppSpacing.screenHorizontalPadding)
@@ -272,6 +282,19 @@ struct CompassActiveView: View {
             // Check ride button after compass settles
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 updateRideButtonVisibility()
+            }
+            // Warn if navigating to a closed place
+            if place.isOpenNow == false {
+                showClosedAlert = true
+            }
+        }
+        .alert("This place is closed!", isPresented: $showClosedAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            if let opens = place.opensAt {
+                Text("It looks like \(place.displayName) is currently closed. Opens at \(opens).")
+            } else {
+                Text("It looks like \(place.displayName) is currently closed.")
             }
         }
         .onChange(of: locationManager.heading?.trueHeading) { _, _ in

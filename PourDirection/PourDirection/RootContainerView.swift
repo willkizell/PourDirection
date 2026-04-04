@@ -37,7 +37,6 @@ struct RootContainerView: View {
     @State private var hasPrewarmed: Bool           = false
 
     private var shouldHideAdBanner: Bool {
-        if selectedTab == .profile { return true }
         if selectedTab == .map { return true }
         if case .help = activeRoute { return true }
         return false
@@ -173,7 +172,8 @@ struct RootContainerView: View {
                         name:             mapItem.name,
                         formattedAddress: nil,
                         coordinate:       mapItem.coordinate,
-                        rating:           mapItem.rating
+                        rating:           mapItem.rating,
+                        isOpenNow:        mapItem.isOpen
                     )
                 },
                 onAccentChange: { tabBarAccent = $0 },
