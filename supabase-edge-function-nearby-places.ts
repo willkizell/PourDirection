@@ -59,14 +59,14 @@ function resolveTypeConfig(type: string): TypeConfig {
           // Arts / museums
           "museum", "art_gallery",
         ],
-        radius: 1500,
+        radius: 5000,
       };
 
     case "restaurant":
       return {
         includedTypes: ["restaurant"],
         excludedTypes: ["fast_food_restaurant", "meal_takeaway"],
-        radius: 1500,
+        radius: 5000,
       };
 
     case "restaurantLateNight":
@@ -83,7 +83,7 @@ function resolveTypeConfig(type: string): TypeConfig {
           "sushi_restaurant",
         ],
         openNow: true,
-        radius: 1500,
+        radius: 5000,
       };
 
     case "night_club":
@@ -99,7 +99,7 @@ function resolveTypeConfig(type: string): TypeConfig {
       return { radius: 3000 };
 
     default:
-      return { includedTypes: [type], radius: 1500 };
+      return { includedTypes: [type], radius: 5000 };
   }
 }
 
@@ -115,12 +115,13 @@ serve(async (req) => {
     const config = resolveTypeConfig(resolvedType);
     const { includedTypes, excludedTypes, openNow, debug } = config;
 
-    // Use client-provided radius if present, otherwise fall back to defaults.
-    // iOS sends walkingDistanceMeters for suggestion bars/restaurants/dispensaries,
-    // searchAreaMeters for clubs and all map categories.
+    // Use the LARGER of client-provided radius and server minimum.
+    // This ensures we always cast a wide enough net for Google to return
+    // a good set of results — the iOS app still filters by user's walking
+    // distance preference, so the UX stays the same.
     const radius =
       typeof clientRadius === "number" && clientRadius > 0
-        ? clientRadius
+        ? Math.max(clientRadius, config.radius)
         : config.radius;
 
     console.log(`[nearby-places] type received: "${resolvedType}"`);
