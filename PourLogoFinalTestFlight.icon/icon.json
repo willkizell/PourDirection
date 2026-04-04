@@ -141,8 +141,8 @@
           "position" : {
             "scale" : 1,
             "translation-in-points" : [
-              0,
-              -12.5
+              4,
+              -15
             ]
           }
         },

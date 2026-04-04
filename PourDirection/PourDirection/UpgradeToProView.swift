@@ -88,25 +88,42 @@ struct UpgradeToProView: View {
                 .opacity(isPurchasing ? 0.6 : 1.0)
                 .padding(.horizontal, AppSpacing.screenHorizontalPadding)
 
-                // ── Restore ──────────────────────────────────────────────
-                Button {
-                    Task {
-                        let restored = await purchaseManager.restorePurchases()
-                        if restored { dismiss() }
+                // ── Footer: Restore · Legal · Cancel ────────────────────
+                VStack(spacing: AppSpacing.xs) {
+                    Button {
+                        Task {
+                            let restored = await purchaseManager.restorePurchases()
+                            if restored { dismiss() }
+                        }
+                    } label: {
+                        Text("Restore Purchases")
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppColors.secondary.opacity(0.5))
                     }
-                } label: {
-                    Text("Restore Purchases")
-                        .font(AppTypography.caption)
-                        .foregroundColor(AppColors.secondary.opacity(0.5))
-                }
-                .padding(.top, AppSpacing.xs)
 
-                // ── Cancel anytime ───────────────────────────────────────
-                Text("Cancel anytime.")
+                    HStack(spacing: AppSpacing.sm) {
+                        Button("Terms of Use") {
+                            if let url = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        Text("·")
+                            .foregroundColor(AppColors.secondary.opacity(0.3))
+                        Button("Privacy Policy") {
+                            if let url = URL(string: "https://pourdirection.carrd.co/") {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                    }
                     .font(AppTypography.caption)
-                    .foregroundColor(AppColors.secondary.opacity(0.35))
-                    .padding(.top, AppSpacing.sm)
-                    .padding(.bottom, AppSpacing.xl)
+                    .foregroundColor(AppColors.secondary.opacity(0.4))
+
+                    Text("Cancel anytime.")
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppColors.secondary.opacity(0.25))
+                }
+                .padding(.top, AppSpacing.sm)
+                .padding(.bottom, AppSpacing.xl)
             }
 
         }

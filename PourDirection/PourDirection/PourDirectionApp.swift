@@ -8,7 +8,6 @@
 
 import SwiftUI
 import CoreLocation
-import AppTrackingTransparency
 #if canImport(GoogleMobileAds)
 import GoogleMobileAds
 #endif
@@ -64,27 +63,25 @@ struct PourDirectionApp: App {
                     }
                 }
 
-                // Request ATT after splash clears, then start ad SDK.
+                // Start ad SDK after splash clears.
                 // refreshEntitlements() is called inside start()'s completion so the
                 // banner never requests an ad before the AdMob SDK is initialized.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) {
-                    ATTrackingManager.requestTrackingAuthorization { _ in
-                        #if canImport(GoogleMobileAds)
-                        // testDeviceIdentifiers must be set BEFORE start()
-                        #if DEBUG
-                        MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
-                            "1b3dc40f450db15529430fa5a35ef648"
-                        ]
-                        #endif
-                        MobileAds.shared.start { _ in
-                            Task { @MainActor in
-                                adsManager.refreshEntitlements()
-                            }
+                    #if canImport(GoogleMobileAds)
+                    // testDeviceIdentifiers must be set BEFORE start()
+                    #if DEBUG
+                    MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
+                        "1b3dc40f450db15529430fa5a35ef648"
+                    ]
+                    #endif
+                    MobileAds.shared.start { _ in
+                        Task { @MainActor in
+                            adsManager.refreshEntitlements()
                         }
-                        #else
-                        adsManager.refreshEntitlements()
-                        #endif
                     }
+                    #else
+                    adsManager.refreshEntitlements()
+                    #endif
                 }
 
                 // Verify StoreKit entitlements on every launch (handles renewals/refunds)
