@@ -64,13 +64,6 @@ function resolveTypeConfig(type: string): TypeConfig {
 
     case "restaurant":
       return {
-        includedTypes: ["restaurant"],
-        excludedTypes: ["fast_food_restaurant", "meal_takeaway"],
-        radius: 5000,
-      };
-
-    case "restaurantLateNight":
-      return {
         includedTypes: [
           "restaurant",
           "fast_food_restaurant",
@@ -82,7 +75,6 @@ function resolveTypeConfig(type: string): TypeConfig {
           "chinese_restaurant",
           "sushi_restaurant",
         ],
-        openNow: true,
         radius: 5000,
       };
 
@@ -105,7 +97,7 @@ function resolveTypeConfig(type: string): TypeConfig {
 
 serve(async (req) => {
   try {
-    const { lat, lng, type, radius: clientRadius } = await req.json();
+    const { lat, lng, type, radius: clientRadius, openNow: clientOpenNow } = await req.json();
 
     const resolvedType =
       typeof type === "string" && type.trim() !== ""
@@ -113,7 +105,8 @@ serve(async (req) => {
         : "bar";
 
     const config = resolveTypeConfig(resolvedType);
-    const { includedTypes, excludedTypes, openNow, debug } = config;
+    const { includedTypes, excludedTypes, debug } = config;
+    const openNow = clientOpenNow === true;
 
     // Use the LARGER of client-provided radius and server minimum.
     // This ensures we always cast a wide enough net for Google to return
@@ -137,7 +130,7 @@ serve(async (req) => {
     // TEXT SEARCH OVERRIDES (dispensary, liquor_store)
     // ============================================
     if (resolvedType === "liquor_store") {
-      const textSearchBody = {
+      const textSearchBody: Record<string, unknown> = {
         textQuery: "liquor store",
         locationBias: {
           circle: {
@@ -146,6 +139,7 @@ serve(async (req) => {
           },
         },
         maxResultCount: 20,
+        ...(openNow ? { openNow: true } : {}),
       };
 
       const textRes = await fetch(
@@ -221,7 +215,7 @@ serve(async (req) => {
     }
 
     if (resolvedType === "dispensary") {
-      const textSearchBody = {
+      const textSearchBody: Record<string, unknown> = {
         textQuery: "cannabis dispensary",
         locationBias: {
           circle: {
@@ -230,6 +224,7 @@ serve(async (req) => {
           },
         },
         maxResultCount: 20,
+        ...(openNow ? { openNow: true } : {}),
       };
 
       const textRes = await fetch(
