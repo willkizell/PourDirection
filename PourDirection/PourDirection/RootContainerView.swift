@@ -35,6 +35,8 @@ struct RootContainerView: View {
     @State private var tabBarAccent: Color          = AppColors.primary
     /// Prevents the prefetch task from firing more than once per session.
     @State private var hasPrewarmed: Bool           = false
+    /// Increments on every tab switch or screen push — forces ad banner to reload.
+    @State private var adReloadTrigger: Int         = 0
 
     private var shouldHideAdBanner: Bool {
         if selectedTab == .map { return true }
@@ -60,6 +62,7 @@ struct RootContainerView: View {
             VStack(spacing: 0) {
                 if !shouldHideAdBanner {
                     AdBannerPlaceholderView()
+                        .id(adReloadTrigger)
                         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                         .padding(.vertical, AppSpacing.xs)
                         .background(AppColors.background)
@@ -101,12 +104,14 @@ struct RootContainerView: View {
             navigationPath = NavigationPath()
             activeRoute    = nil
             tabBarAccent   = AppColors.primary
+            adReloadTrigger += 1
         }
-        // Reset accent to brand when user swipes back to root
+        // Reload ad on every navigation push/pop
         .onChange(of: navigationPath) { _, newPath in
             if newPath.isEmpty {
                 tabBarAccent = AppColors.primary
             }
+            adReloadTrigger += 1
         }
         .onAppear {
             // Start location as early as possible so it's ready when views appear
