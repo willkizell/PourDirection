@@ -218,7 +218,7 @@ struct CompassActiveView: View {
                     .padding(.top, AppSpacing.sm)
                     .animation(.easeInOut(duration: 0.3), value: displayedAlignment)
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 // ── Actions ─────────────────────────────────────────────────
                 VStack(spacing: AppSpacing.sm) {
@@ -254,9 +254,16 @@ struct CompassActiveView: View {
                         .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
+
+                    // ── Ad Banner ────────────────────────────────────────────
+                    if !PurchaseManager.shared.isPremium {
+                        AdBannerPlaceholderView()
+                            .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+                            .padding(.top, AppSpacing.xs)
+                    }
                 }
                 .padding(.top, AppSpacing.sm)
-                .padding(.bottom, AppSpacing.xl)
+                .padding(.bottom, AppSpacing.md)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
