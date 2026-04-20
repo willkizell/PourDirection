@@ -18,6 +18,7 @@ import StoreKit
 struct ProfileView: View {
 
     @Environment(LocationManager.self) private var locationManager
+    @Environment(ThemeManager.self)   private var themeManager
     @Environment(\.scenePhase) private var scenePhase
     @State private var notifStatus: UNAuthorizationStatus = .notDetermined
     @State private var showUpgradeSheet    = false
@@ -85,7 +86,6 @@ struct ProfileView: View {
                     .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                     .padding(.top, AppSpacing.lg)
                     .padding(.bottom, AppSpacing.md)
-                    .background(AppColors.background.ignoresSafeArea(edges: .top))
 
                 // ── Scrollable Content ──────────────────────────────────────
                 ScrollView(showsIndicators: false) {
@@ -93,6 +93,15 @@ struct ProfileView: View {
 
                         // ── Preferences ───────────────────────────────────
                         sectionHeader("Preferences")
+
+                        SettingsToggleRow(
+                            icon: "sun.max",
+                            title: "Day Mode",
+                            isOn: Binding(
+                                get: { themeManager.isDayMode },
+                                set: { themeManager.setMode($0 ? .day : .night); HapticManager.shared.light() }
+                            )
+                        )
 
                         SettingsToggleRow(
                             icon: "bell",
@@ -286,4 +295,5 @@ struct SettingsNavRow: View {
     .ignoresSafeArea(edges: .bottom)
     .preferredColorScheme(.dark)
     .environment(LocationManager())
+    .environment(ThemeManager.shared)
 }

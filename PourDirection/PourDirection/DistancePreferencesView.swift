@@ -12,6 +12,7 @@ import SwiftUI
 
 struct DistancePreferencesView: View {
 
+    @Environment(ThemeManager.self) private var themeManager
     @Bindable private var prefs = DistancePreferences.shared
 
     var body: some View {
@@ -62,7 +63,7 @@ struct DistancePreferencesView: View {
                 Spacer().frame(height: AppSpacing.lg)
             }
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.preferredColorScheme)
         .onChange(of: prefs.walkingDistanceMeters) { _, newWalking in
             // Enforce: search area min == walking max
             if prefs.searchAreaMeters < newWalking {

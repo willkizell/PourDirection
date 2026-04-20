@@ -140,6 +140,13 @@ struct Place: Identifiable, Hashable {
         case .club:        pool = mockClubNames
         case .dispensary:  pool = mockDispoNames
         case .liquorStore: pool = mockLiquorNames
+        case .casino:      pool = mockBarNames
+        case .patio:       pool = mockRestaurantNames
+        case .brunch:      pool = mockRestaurantNames
+        case .coffee:      pool = mockBarNames
+        case .dayDrinks:   pool = mockBarNames
+        case .parks:       pool = mockRestaurantNames
+        case .dessert:     pool = mockRestaurantNames
         }
         let hash = abs(id.hashValue)
         return pool[hash % pool.count]

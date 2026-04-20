@@ -13,11 +13,21 @@ import SwiftUI
 // MARK: - Place Category
 
 enum PlaceCategory: String, CaseIterable, Codable {
+    // Night categories
     case bar         = "Bar"
     case restaurant  = "Restaurant"
     case club        = "Club"
     case dispensary  = "Dispensary"
     case liquorStore = "Liquor Store"
+    case casino      = "Casino"
+
+    // Day categories
+    case patio       = "Patio"
+    case brunch      = "Brunch"
+    case coffee      = "Coffee"
+    case dayDrinks   = "Day Drinks"
+    case parks       = "Parks"
+    case dessert     = "Dessert"
 
     /// Google Places API `includedTypes` value for this category.
     var googleIncludedType: String {
@@ -27,6 +37,13 @@ enum PlaceCategory: String, CaseIterable, Codable {
         case .club:        return "night_club"
         case .dispensary:  return "dispensary"
         case .liquorStore: return "liquor_store"
+        case .casino:      return "casino"
+        case .patio:       return "patio"
+        case .brunch:      return "brunch"
+        case .coffee:      return "coffee"
+        case .dayDrinks:   return "day_drinks"
+        case .parks:       return "park"
+        case .dessert:     return "dessert"
         }
     }
 
@@ -38,7 +55,48 @@ enum PlaceCategory: String, CaseIterable, Codable {
         case .club:        return AppColors.clubRed
         case .dispensary:  return AppColors.dispensaryGold
         case .liquorStore: return AppColors.liquorStoreAmber
+        case .casino:      return AppColors.casinoGold
+        case .patio:       return AppColors.primary
+        case .brunch:      return AppColors.brunchOrange
+        case .coffee:      return AppColors.coffeeBrown
+        case .dayDrinks:   return AppColors.liquorStoreAmber
+        case .parks:       return AppColors.parksGreen
+        case .dessert:     return AppColors.dessertPink
         }
+    }
+
+    /// SF Symbol name for this category. Empty string = use CasinoIconView instead.
+    var iconName: String {
+        switch self {
+        case .bar:         return "wineglass"
+        case .restaurant:  return "fork.knife"
+        case .club:        return "music.note"
+        case .dispensary:  return "leaf"
+        case .liquorStore: return "cart"
+        case .casino:      return ""
+        case .patio:       return ""
+        case .brunch:      return "fork.knife.circle"
+        case .coffee:      return "cup.and.saucer.fill"
+        case .dayDrinks:   return "wineglass"
+        case .parks:       return ""
+        case .dessert:     return "birthday.cake"
+        }
+    }
+
+    // MARK: - Category Grouping
+
+    var isNightCategory: Bool {
+        [.bar, .casino, .restaurant, .liquorStore, .club, .dispensary].contains(self)
+    }
+
+    var isDayCategory: Bool { !isNightCategory }
+
+    static var nightCategories: [PlaceCategory] {
+        [.bar, .casino, .restaurant, .liquorStore, .club, .dispensary]
+    }
+
+    static var dayCategories: [PlaceCategory] {
+        [.patio, .brunch, .coffee, .dayDrinks, .parks, .dessert]
     }
 }
 
@@ -186,6 +244,13 @@ struct MapItem: Identifiable, Hashable {
         let clubNames        = ["Neon Serenade", "Echo Lounge", "Apex Club", "Drift"]
         let dispensaryNames  = ["Green Room", "The Vault", "Elevated", "Canopy"]
         let liquorStoreNames = ["BevMo!", "Total Wine", "The Liquor Barn", "Spirits & Co"]
+        let casinoNames      = ["Royal Flush", "The Golden Chip", "Ace High", "Lucky Seven's"]
+        let patioNames       = ["The Sun Deck", "Garden Social", "Terrace & Co", "Alfresco"]
+        let brunchNames      = ["Sunny Side Up", "The Brunch Club", "Morning Glory", "Eggs & Co"]
+        let coffeeNames      = ["Common Grounds", "The Daily Grind", "Brew & Co", "Roast Social"]
+        let dayDrinksNames   = ["The Afternoon Bar", "Sundown Social", "Day Tripper", "The Patio Tap"]
+        let parksNames       = ["Riverside Park", "The Commons", "Greenway Gardens", "City Park"]
+        let dessertNames     = ["Sweet Surrender", "The Creamery", "Sugar & Spice", "Dessert Bar"]
 
         let pool: [String] = {
             switch category {
@@ -194,6 +259,13 @@ struct MapItem: Identifiable, Hashable {
             case .club:        return clubNames
             case .dispensary:  return dispensaryNames
             case .liquorStore: return liquorStoreNames
+            case .casino:      return casinoNames
+            case .patio:       return patioNames
+            case .brunch:      return brunchNames
+            case .coffee:      return coffeeNames
+            case .dayDrinks:   return dayDrinksNames
+            case .parks:       return parksNames
+            case .dessert:     return dessertNames
             }
         }()
 

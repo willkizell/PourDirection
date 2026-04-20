@@ -30,6 +30,7 @@ struct MapPinView: View {
     let isClosed: Bool
 
     private var pinColor: Color { category.color }
+    private var pinFill:  Color { AppColors.background }
 
     private var iconName: String {
         switch category {
@@ -38,6 +39,13 @@ struct MapPinView: View {
         case .club:        return "music.note"
         case .dispensary:  return "leaf"
         case .liquorStore: return "cart"
+        case .casino:      return "suit.spade.fill"
+        case .patio:       return ""
+        case .brunch:      return "fork.knife.circle"
+        case .coffee:      return "cup.and.saucer.fill"
+        case .dayDrinks:   return "wineglass"
+        case .parks:       return ""
+        case .dessert:     return "birthday.cake"
         }
     }
 
@@ -45,22 +53,29 @@ struct MapPinView: View {
         ZStack {
             // Triangle tail — drawn first so the circle sits on top of it
             ZStack {
-                PinTail().fill(Color.black)
+                PinTail().fill(pinFill)
                 PinTail().stroke(pinColor, lineWidth: 1.5)
             }
             .frame(width: 13, height: 9)
             .offset(y: 21)
 
-            // Circle body — black fill with accent border
+            // Circle body — adaptive fill with accent border
             Circle()
-                .fill(Color.black)
+                .fill(pinFill)
                 .frame(width: 36, height: 36)
-                .overlay(Circle().stroke(pinColor, lineWidth: 1.5))
+                .overlay(Circle().stroke(pinColor, lineWidth: 2))
+                .shadow(color: Color.black.opacity(0.25), radius: 3, y: 1)
 
             // Category icon in accent color
-            Image(systemName: iconName)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(pinColor)
+            if category == .patio {
+                PatioIconView(color: pinColor).frame(width: 16, height: 16)
+            } else if category == .parks {
+                ParksIconView(color: pinColor).frame(width: 16, height: 16)
+            } else {
+                Image(systemName: iconName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(pinColor)
+            }
         }
         .opacity(isClosed ? 0.50 : 1.0)
         .saturation(isClosed ? 0.3 : 1.0)

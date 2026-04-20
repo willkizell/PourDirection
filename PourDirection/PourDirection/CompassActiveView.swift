@@ -22,6 +22,7 @@ struct CompassActiveView: View {
     let onDismiss: () -> Void
 
     @Environment(LocationManager.self) private var locationManager
+    @Environment(ThemeManager.self)   private var themeManager
 
     // ── Heading State ─────────────────────────────────────────────────────────
     /// Continuous (unwrapped) heading for rotation — never jumps at 0/360 boundary.
@@ -173,8 +174,9 @@ struct CompassActiveView: View {
                 // ── Compass ─────────────────────────────────────────────────
                 ZStack {
                     // Alignment glow ring
+                    let glowBoost: Double = themeManager.isDayMode ? 2.2 : 1.0
                     Circle()
-                        .fill(displayedAlignment.color.opacity(displayedAlignment.glowOpacity))
+                        .fill(displayedAlignment.color.opacity(displayedAlignment.glowOpacity * glowBoost))
                         .frame(width: 300, height: 300)
                         .blur(radius: 30)
                         .scaleEffect(alignedPulse && displayedAlignment == .aligned ? 1.06 : 1.0)
@@ -276,7 +278,7 @@ struct CompassActiveView: View {
             )
             .background(AppColors.background.ignoresSafeArea(edges: .bottom))
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.preferredColorScheme)
         .onAppear {
             locationManager.startUpdating()
             // Pulse animation for aligned state
@@ -381,17 +383,18 @@ struct CompassActiveView: View {
     /// Compass face — concentric rings and cardinal labels.
     /// Rotated externally by -displayHeading so NSEW always matches the real world.
     private var compassFace: some View {
-        ZStack {
+        let isLight = themeManager.isDayMode
+        return ZStack {
             Circle()
-                .stroke(displayedAlignment.color.opacity(0.10), lineWidth: 1)
+                .stroke(displayedAlignment.color.opacity(isLight ? 0.28 : 0.10), lineWidth: isLight ? 1.5 : 1)
                 .frame(width: 280, height: 280)
 
             Circle()
-                .stroke(displayedAlignment.color.opacity(0.14), lineWidth: 1)
+                .stroke(displayedAlignment.color.opacity(isLight ? 0.38 : 0.14), lineWidth: isLight ? 1.5 : 1)
                 .frame(width: 210, height: 210)
 
             Circle()
-                .stroke(displayedAlignment.color.opacity(0.22), lineWidth: 1.5)
+                .stroke(displayedAlignment.color.opacity(isLight ? 0.55 : 0.22), lineWidth: isLight ? 2 : 1.5)
                 .frame(width: 140, height: 140)
 
             compassLabel("N", offset: CGSize(width: 0,    height: -125))
@@ -423,13 +426,14 @@ struct CompassActiveView: View {
     /// Inner needle — rotates by normalizedDifference to point toward target.
     /// When this needle aligns with the static triangle at top, the user is on track.
     private var headingNeedle: some View {
-        ZStack {
+        let isLight = themeManager.isDayMode
+        return ZStack {
             Capsule()
-                .fill(AppColors.secondary.opacity(0.06))
+                .fill(AppColors.secondary.opacity(isLight ? 0.20 : 0.06))
                 .frame(width: 2, height: 35)
                 .offset(y: 20)
             Capsule()
-                .fill(AppColors.secondary.opacity(0.25))
+                .fill(AppColors.secondary.opacity(isLight ? 0.55 : 0.25))
                 .frame(width: 2, height: 45)
                 .offset(y: -26)
         }
@@ -437,15 +441,16 @@ struct CompassActiveView: View {
 
     /// Dynamic background gradient that shifts with alignment state.
     private var dynamicBackground: some View {
-        ZStack {
+        let isLight = themeManager.isDayMode
+        return ZStack {
             AppColors.background
                 .ignoresSafeArea()
 
             RadialGradient(
                 gradient: Gradient(stops: [
-                    .init(color: displayedAlignment.color.opacity(0.15), location: 0.0),
-                    .init(color: displayedAlignment.color.opacity(0.04), location: 0.4),
-                    .init(color: AppColors.background,                   location: 0.75)
+                    .init(color: displayedAlignment.color.opacity(isLight ? 0.30 : 0.15), location: 0.0),
+                    .init(color: displayedAlignment.color.opacity(isLight ? 0.10 : 0.04), location: 0.4),
+                    .init(color: AppColors.background,                                    location: 0.75)
                 ]),
                 center: .center,
                 startRadius: 1,
@@ -467,7 +472,7 @@ struct CompassActiveView: View {
     private func compassLabel(_ text: String, offset: CGSize) -> some View {
         Text(text)
             .font(AppTypography.caption)
-            .foregroundColor(AppColors.secondary.opacity(0.20))
+            .foregroundColor(AppColors.secondary.opacity(themeManager.isDayMode ? 0.45 : 0.20))
             .offset(offset)
     }
 }
@@ -486,4 +491,5 @@ struct CompassActiveView: View {
         onDismiss: {}
     )
     .environment(LocationManager())
+    .environment(ThemeManager.shared)
 }

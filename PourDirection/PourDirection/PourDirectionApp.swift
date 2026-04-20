@@ -21,6 +21,7 @@ struct PourDirectionApp: App {
     @State private var mainOpacity = 0.0
     @State private var locationManager = LocationManager()
     @StateObject private var adsManager = AdsManager()
+    @State private var themeManager = ThemeManager.shared
 
     @AppStorage("com.pourdirection.ageVerified")      private var ageVerified      = false
     @AppStorage("com.pourdirection.hasLaunchedBefore") private var hasLaunchedBefore = false
@@ -36,6 +37,7 @@ struct PourDirectionApp: App {
                 // Main app shell — fades in after splash is clear
                 RootContainerView()
                     .environment(locationManager)
+                    .environment(themeManager)
                     .environmentObject(adsManager)
                     .opacity(mainOpacity)
 

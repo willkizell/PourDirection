@@ -25,6 +25,7 @@ enum AppRoute: Hashable {
 struct RootContainerView: View {
 
     @Environment(LocationManager.self) private var locationManager
+    @Environment(ThemeManager.self)   private var themeManager
 
     // ── Navigation & Flow State ───────────────────────────────────────────────
     @State private var selectedTab: AppTab          = .explore
@@ -128,19 +129,35 @@ struct RootContainerView: View {
             let walk = DistancePreferences.shared.walkingDistanceMeters
             let wide = DistancePreferences.shared.searchAreaMeters
             Task {
-                async let bars    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walk)
-                async let rests   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: walk)
-                async let dispos  = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: walk)
-                async let liquor  = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: walk)
-                async let clubs   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",   radius: wide)
+                // Night categories
+                async let bars      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walk)
+                async let rests     = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: walk)
+                async let dispos    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: walk)
+                async let liquor    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: walk)
+                async let clubs     = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",   radius: wide)
+                async let casino    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "casino",       radius: wide)
+                // Day categories
+                async let patio     = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "patio",        radius: walk)
+                async let brunch    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "brunch",       radius: walk)
+                async let coffee    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "coffee",       radius: walk)
+                async let dayDrinks = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "day_drinks",   radius: wide)
+                async let parks     = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "park",         radius: walk)
+                async let dessert   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dessert",      radius: walk)
                 _ = try? await bars
                 _ = try? await rests
                 _ = try? await dispos
                 _ = try? await liquor
                 _ = try? await clubs
+                _ = try? await casino
+                _ = try? await patio
+                _ = try? await brunch
+                _ = try? await coffee
+                _ = try? await dayDrinks
+                _ = try? await parks
+                _ = try? await dessert
             }
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.preferredColorScheme)
     }
 
     // ── Tab Content ───────────────────────────────────────────────────────────
@@ -149,13 +166,9 @@ struct RootContainerView: View {
     private var tabContent: some View {
         switch selectedTab {
         case .explore:
-            ExploreView(
-                onFindBar:         { navigationPath.append(AppRoute.suggestions(category: .bar)) },
-                onFindRestaurant:  { navigationPath.append(AppRoute.suggestions(category: .restaurant)) },
-                onFindLiquorStore: { navigationPath.append(AppRoute.suggestions(category: .liquorStore)) },
-                onFindClub:        { navigationPath.append(AppRoute.suggestions(category: .club)) },
-                onFindDispensary:  { navigationPath.append(AppRoute.suggestions(category: .dispensary)) }
-            )
+            ExploreView(onCategoryTap: { category in
+                navigationPath.append(AppRoute.suggestions(category: category))
+            })
         case .saved:
             SavedView(
                 onLetsGo: { place in

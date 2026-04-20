@@ -18,6 +18,9 @@ struct MapTabView: View {
     private let homeManager = HomeLocationManager.shared
 
     @Environment(LocationManager.self) private var locationManager
+    @Environment(ThemeManager.self)   private var themeManager
+
+    private var shadowOpacity: Double { themeManager.isDayMode ? 0.12 : 0.40 }
 
     // Single source of truth for selected pin — drives sheet via .sheet(item:)
     @State private var selectedItem: MapItem? = nil
@@ -244,7 +247,7 @@ struct MapTabView: View {
                             Circle()
                                 .stroke(controlTint.opacity(0.25), lineWidth: 0.5)
                         )
-                        .shadow(color: Color.black.opacity(0.4), radius: 4, y: 2)
+                        .shadow(color: Color.black.opacity(shadowOpacity), radius: 4, y: 2)
                         .animation(.easeInOut(duration: 0.25), value: selectedItem?.id)
                 }
                 .buttonStyle(.plain)
@@ -262,6 +265,11 @@ struct MapTabView: View {
         // One-shot retry once location arrives (e.g. permission granted after task fires)
         .onChange(of: locationManager.currentLocation) { _, newLocation in
             guard newLocation != nil, !hasLoadedPlaces else { return }
+            Task { await fetchPlaces() }
+        }
+        // Refetch when Day/Night mode changes
+        .onChange(of: themeManager.mode) { _, _ in
+            hasLoadedPlaces = false
             Task { await fetchPlaces() }
         }
         // Update category grouping and distance cache when places change
@@ -371,20 +379,6 @@ struct MapTabView: View {
         let walkRadius   = distancePrefs.walkingDistanceMeters
         let searchRadius = distancePrefs.searchAreaMeters
 
-        // Two-pass fetch: walking radius (nearby) + search area (wide).
-        // Google returns max 20 per request — a large radius spreads results
-        // across the whole area, missing nearby venues. The walking-radius
-        // fetch guarantees close-by results always appear.
-        async let nearbyBars        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walkRadius)
-        async let nearbyRestaurants = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",    radius: walkRadius)
-        async let nearbyDispos      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",    radius: walkRadius)
-        async let nearbyLiquor      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store",  radius: walkRadius)
-        async let wideBars          = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: searchRadius)
-        async let wideRestaurants   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",    radius: searchRadius)
-        async let wideClubs         = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",    radius: searchRadius)
-        async let wideDispos        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",    radius: searchRadius)
-        async let wideLiquor        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store",  radius: searchRadius)
-
         var seen = Set<String>()
         var combined: [MapItem] = []
 
@@ -396,35 +390,66 @@ struct MapTabView: View {
             }
         }
 
-        // Nearby results first — they take priority
-        if let bars = try? await nearbyBars           { addUnique(bars, category: .bar) }
-        if let restaurants = try? await nearbyRestaurants { addUnique(restaurants, category: .restaurant) }
-        if let dispos = try? await nearbyDispos {
-            let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
-            addUnique(filtered, category: .dispensary)
-        }
-        if let liquor = try? await nearbyLiquor {
-            let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
-            addUnique(filtered, category: .liquorStore)
-        }
+        if themeManager.isDayMode {
+            // Day mode: fetch patio, brunch, coffee, day drinks, parks, dessert
+            async let nearbyPatio     = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "patio",      radius: walkRadius)
+            async let nearbyBrunch    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "brunch",     radius: walkRadius)
+            async let nearbyCoffee    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "coffee",     radius: walkRadius)
+            async let nearbyParks     = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "park",       radius: walkRadius)
+            async let nearbyDessert   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dessert",    radius: walkRadius)
+            async let wideDayDrinks   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "day_drinks", radius: searchRadius)
 
-        // Wide results — fill in farther venues
-        if let bars = try? await wideBars             { addUnique(bars, category: .bar) }
-        if let restaurants = try? await wideRestaurants { addUnique(restaurants, category: .restaurant) }
-        if let clubs = try? await wideClubs {
-            let filtered = clubs.filter {
-                let t = Set($0.types)
-                return t.contains("night_club") && !t.contains("restaurant")
+            if let p = try? await nearbyPatio   { addUnique(p, category: .patio) }
+            if let p = try? await nearbyBrunch  { addUnique(p, category: .brunch) }
+            if let p = try? await nearbyCoffee  { addUnique(p, category: .coffee) }
+            if let p = try? await nearbyParks   { addUnique(p, category: .parks) }
+            if let p = try? await nearbyDessert { addUnique(p, category: .dessert) }
+            if let p = try? await wideDayDrinks { addUnique(p, category: .dayDrinks) }
+        } else {
+            // Night mode: fetch bars, restaurants, clubs, dispensaries, liquor stores, casinos.
+            // Two-pass fetch: walking radius (nearby) + search area (wide).
+            async let nearbyBars        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walkRadius)
+            async let nearbyRestaurants = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: walkRadius)
+            async let nearbyDispos      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: walkRadius)
+            async let nearbyLiquor      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: walkRadius)
+            async let wideBars          = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: searchRadius)
+            async let wideRestaurants   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: searchRadius)
+            async let wideClubs         = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",   radius: searchRadius)
+            async let wideDispos        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: searchRadius)
+            async let wideLiquor        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: searchRadius)
+            async let wideCasino        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "casino",       radius: searchRadius)
+
+            // Nearby results first — they take priority
+            if let bars = try? await nearbyBars           { addUnique(bars, category: .bar) }
+            if let restaurants = try? await nearbyRestaurants { addUnique(restaurants, category: .restaurant) }
+            if let dispos = try? await nearbyDispos {
+                let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
+                addUnique(filtered, category: .dispensary)
             }
-            addUnique(filtered, category: .club)
-        }
-        if let dispos = try? await wideDispos {
-            let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
-            addUnique(filtered, category: .dispensary)
-        }
-        if let liquor = try? await wideLiquor {
-            let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
-            addUnique(filtered, category: .liquorStore)
+            if let liquor = try? await nearbyLiquor {
+                let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
+                addUnique(filtered, category: .liquorStore)
+            }
+
+            // Wide results — fill in farther venues
+            if let bars = try? await wideBars             { addUnique(bars, category: .bar) }
+            if let restaurants = try? await wideRestaurants { addUnique(restaurants, category: .restaurant) }
+            if let clubs = try? await wideClubs {
+                let filtered = clubs.filter {
+                    let t = Set($0.types)
+                    return t.contains("night_club") && !t.contains("restaurant")
+                }
+                addUnique(filtered, category: .club)
+            }
+            if let dispos = try? await wideDispos {
+                let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
+                addUnique(filtered, category: .dispensary)
+            }
+            if let liquor = try? await wideLiquor {
+                let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
+                addUnique(filtered, category: .liquorStore)
+            }
+            if let casinos = try? await wideCasino { addUnique(casinos, category: .casino) }
         }
 
         // Final filter to search area

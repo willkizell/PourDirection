@@ -80,7 +80,6 @@ struct HelpView: View {
                 .padding(.horizontal, AppSpacing.screenHorizontalPadding)
                 .padding(.top, AppSpacing.lg)
                 .padding(.bottom, AppSpacing.md)
-                .background(AppColors.background.ignoresSafeArea(edges: .top))
 
                 // ── Scrollable Content ───────────────────────────────────────
                 ScrollView(showsIndicators: false) {

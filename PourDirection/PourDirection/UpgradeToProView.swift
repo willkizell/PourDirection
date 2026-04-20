@@ -12,7 +12,8 @@ import StoreKit
 
 struct UpgradeToProView: View {
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss)        private var dismiss
+    @Environment(ThemeManager.self) private var themeManager
     @StateObject private var purchaseManager = PurchaseManager.shared
     @State private var isPurchasing = false
 
@@ -127,7 +128,7 @@ struct UpgradeToProView: View {
             }
 
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.preferredColorScheme)
         .task { await purchaseManager.loadProduct() }
     }
 

@@ -105,6 +105,7 @@ struct SuggestionView: View {
     }
 
     @Environment(LocationManager.self) private var locationManager
+    @Environment(ThemeManager.self)   private var themeManager
 
     private struct SuggestionItem: Identifiable {
         let id: String
@@ -165,6 +166,20 @@ struct SuggestionView: View {
             return "the couch?"
         case .liquorStore:
             return "da liquor store?"
+        case .casino:
+            return "some action?"
+        case .patio:
+            return "some fresh air?"
+        case .brunch:
+            return "brunch?"
+        case .coffee:
+            return "some coffee?"
+        case .dayDrinks:
+            return "day drinks?"
+        case .parks:
+            return "the outdoors?"
+        case .dessert:
+            return "something sweet?"
         }
     }
 
@@ -222,7 +237,7 @@ struct SuggestionView: View {
                         endOfSuggestionsCard(exhausted: false)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .top)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.top, AppSpacing.sm)
 
                 // ── Bottom Actions ────────────────────────────────────────────
@@ -341,7 +356,7 @@ struct SuggestionView: View {
 
                     let dist = place.distance(from: locationManager.currentLocation)
                     let beyondWalking = (dist ?? 0) > distancePrefs.walkingDistanceMeters
-                    let isDriving = category == .club && beyondWalking
+                    let isDriving = (category == .club || category == .casino) && beyondWalking
                     let distIcon = isDriving ? "car.fill" : "figure.walk"
                     HStack(spacing: 4) {
                         Image(systemName: distIcon)
@@ -424,14 +439,14 @@ struct SuggestionView: View {
 
                     if shouldGoBack && currentIndex > 0 {
                         isReversing = true
-                        withAnimation(.spring(response: 0.12, dampingFraction: 0.82)) {
-                            dragOffset = 0
+                        dragOffset = 0   // zero immediately so new card enters unshifted
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.9)) {
                             currentIndex -= 1
                         }
-                } else if shouldGoNext && currentIndex + 1 <= items.count {
+                    } else if shouldGoNext && currentIndex + 1 <= items.count {
                         isReversing = false
-                        withAnimation(.spring(response: 0.12, dampingFraction: 0.82)) {
-                            dragOffset = 0
+                        dragOffset = 0   // zero immediately so new card enters unshifted
+                        withAnimation(.spring(response: 0.22, dampingFraction: 0.9)) {
                             currentIndex += 1
                         }
                     } else {
@@ -602,9 +617,7 @@ struct SuggestionView: View {
     // MARK: - Load
 
     private func fetchPlaces(for category: PlaceCategory, at loc: CLLocation) async throws -> [Place] {
-        let searchRadius = category == .club
-            ? distancePrefs.searchAreaMeters
-            : distancePrefs.walkingDistanceMeters
+        let searchRadius = suggestionMaxDistance(for: category)
 
         var fetched = try await SupabaseManager.shared.fetchNearbyPlaces(
             lat: loc.coordinate.latitude,
@@ -624,6 +637,12 @@ struct SuggestionView: View {
         // Text Search doesn't enforce a hard radius — trim dispensary/liquor store results.
         if category == .dispensary || category == .liquorStore {
             let maxDist = max(distancePrefs.walkingDistanceMeters, 3000)
+            fetched = fetched.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= maxDist }
+        }
+
+        // Day categories with walkable intent — hard-cap to walking distance.
+        if [.patio, .brunch, .dessert, .coffee, .parks].contains(category) {
+            let maxDist = distancePrefs.walkingDistanceMeters
             fetched = fetched.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= maxDist }
         }
 
@@ -665,11 +684,12 @@ struct SuggestionView: View {
     }
 
     /// Max distance allowed in SuggestionView for a given category.
-    /// Bars/restaurants/dispensaries → walking. Clubs → driving.
+    /// Clubs/casinos/day drinks → wide search area. All others → walking distance.
     private func suggestionMaxDistance(for category: PlaceCategory) -> Double {
-        category == .club
-            ? distancePrefs.searchAreaMeters
-            : distancePrefs.walkingDistanceMeters
+        switch category {
+        case .club, .casino, .dayDrinks: return distancePrefs.searchAreaMeters
+        default:                          return distancePrefs.walkingDistanceMeters
+        }
     }
 
     private func filterByDistance(_ places: [Place], category: PlaceCategory, from loc: CLLocation) -> [Place] {
@@ -698,7 +718,9 @@ struct SuggestionView: View {
                     )
                 }
             case .mixed:
-                let categories: [PlaceCategory] = [.bar, .restaurant, .club, .dispensary, .liquorStore]
+                let categories: [PlaceCategory] = themeManager.isDayMode
+                    ? PlaceCategory.dayCategories
+                    : PlaceCategory.nightCategories
                 let buckets: [PlaceCategory: [Place]] = try await withThrowingTaskGroup(
                     of: (PlaceCategory, [Place]).self
                 ) { group in

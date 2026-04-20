@@ -19,6 +19,7 @@ struct MapItemBottomSheet: View {
     var onSwipeRight: (() -> Void)? = nil
 
     @Environment(LocationManager.self) private var locationManager
+    @Environment(ThemeManager.self)   private var themeManager
     @GestureState private var dragOffset: CGFloat = 0
     @State private var swipeTriggered = false
 
@@ -207,7 +208,7 @@ struct MapItemBottomSheet: View {
                     }
                 }
         )
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(themeManager.preferredColorScheme)
     }
 
     private var photoPlaceholder: some View {

@@ -90,6 +90,32 @@ function resolveTypeConfig(type: string): TypeConfig {
       // Text Search override handles this
       return { radius: 3000 };
 
+    // ── Day categories ────────────────────────────────────────────────────────
+
+    case "casino":
+      return { includedTypes: ["casino"], radius: 5000 };
+
+    case "coffee":
+      return { includedTypes: ["cafe", "coffee_shop"], radius: 3000 };
+
+    case "park":
+      return { includedTypes: ["park", "national_park"], radius: 5000 };
+
+    case "day_drinks":
+      return { includedTypes: ["bar", "brewery", "wine_bar"], radius: 5000 };
+
+    case "patio":
+      // Text Search override handles this
+      return { radius: 3000 };
+
+    case "brunch":
+      // Text Search override handles this
+      return { radius: 3000 };
+
+    case "dessert":
+      // Text Search override handles this
+      return { radius: 3000 };
+
     default:
       return { includedTypes: [type], radius: 5000 };
   }
@@ -270,6 +296,89 @@ serve(async (req) => {
           ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&key=${GOOGLE_PLACES_API_KEY}`
           : undefined;
 
+        return {
+          id: place.id ?? place.displayName?.text,
+          displayName: place.displayName,
+          formattedAddress: place.formattedAddress ?? null,
+          location: place.location,
+          rating: place.rating ?? null,
+          photoUri,
+          types: place.types ?? [],
+          userRatingCount: place.userRatingCount ?? null,
+          isOpenNow: place.currentOpeningHours?.openNow ?? null,
+          weekdayDescriptions: place.currentOpeningHours?.weekdayDescriptions ?? null,
+        };
+      });
+
+      return new Response(JSON.stringify({ places: mapped }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ============================================
+    // TEXT SEARCH OVERRIDES (day categories)
+    // ============================================
+
+    const textSearchTypes: Record<string, string> = {
+      patio:   "outdoor patio bar restaurant",
+      brunch:  "brunch",
+      dessert: "dessert bakery ice cream",
+    };
+
+    if (resolvedType in textSearchTypes) {
+      const textQuery = textSearchTypes[resolvedType];
+      const textSearchBody: Record<string, unknown> = {
+        textQuery,
+        locationBias: {
+          circle: {
+            center: { latitude: lat, longitude: lng },
+            radius,
+          },
+        },
+        maxResultCount: 20,
+        ...(openNow ? { openNow: true } : {}),
+      };
+
+      const textRes = await fetch(
+        "https://places.googleapis.com/v1/places:searchText",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+            "X-Goog-FieldMask": [
+              "places.id",
+              "places.displayName",
+              "places.formattedAddress",
+              "places.location",
+              "places.rating",
+              "places.photos",
+              "places.types",
+              "places.userRatingCount",
+              "places.currentOpeningHours",
+            ].join(","),
+          },
+          body: JSON.stringify(textSearchBody),
+        }
+      );
+
+      const textData = await textRes.json();
+
+      if (!textRes.ok) {
+        console.error(`[${resolvedType}] Google Text Search error:`, textData);
+        return new Response(JSON.stringify({ places: [] }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const textPlaces = textData.places ?? [];
+      console.log(`[nearby-places] ${resolvedType} text search returning ${textPlaces.length} places`);
+
+      const mapped = textPlaces.map((place: any) => {
+        const photoName = place.photos?.[0]?.name ?? null;
+        const photoUri = photoName
+          ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&key=${GOOGLE_PLACES_API_KEY}`
+          : undefined;
         return {
           id: place.id ?? place.displayName?.text,
           displayName: place.displayName,

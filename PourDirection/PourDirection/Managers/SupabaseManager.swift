@@ -115,7 +115,7 @@ final class SupabaseManager {
         }
 
         let response: NearbyPlacesResponse = try await invokeFunction(
-            name: "nearby-places",
+            name: Config.nearbyPlacesFunction,
             body: NearbyPlacesPayload(lat: lat, lng: lng, type: type, radius: radius, openNow: openNow ? true : nil)
         )
         let places = response.places.map { Place(from: $0) }
