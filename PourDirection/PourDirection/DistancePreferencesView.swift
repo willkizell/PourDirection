@@ -95,6 +95,7 @@ struct DistancePreferencesView: View {
             UpgradeToProView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(AppColors.background)
         }
     }
 

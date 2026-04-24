@@ -293,11 +293,13 @@ struct SuggestionView: View {
             DistancePreferencesView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(AppColors.background)
         }
         .sheet(isPresented: $showUpgradeSheet) {
             UpgradeToProView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(AppColors.background)
         }
     }
 

@@ -227,22 +227,42 @@ struct CompassActiveView: View {
 
                 // ── Actions ─────────────────────────────────────────────────
                 VStack(spacing: AppSpacing.sm) {
-                    HStack(spacing: AppSpacing.lg) {
+                    HStack(spacing: AppSpacing.sm) {
                         Button(action: onOpenInMaps) {
-                            Text("Open in Maps")
-                                .font(AppTypography.bodySmall)
-                                .foregroundColor(AppColors.secondary.opacity(0.5))
+                            HStack(spacing: 6) {
+                                Image(systemName: "map.fill")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("Open in Maps")
+                                    .font(AppTypography.bodySmall.weight(.medium))
+                            }
+                            .foregroundColor(AppColors.secondary.opacity(0.7))
+                            .padding(.horizontal, AppSpacing.md)
+                            .padding(.vertical, AppSpacing.xs + 2)
+                            .background(AppColors.cardSurface.opacity(0.5))
+                            .overlay(
+                                Capsule()
+                                    .stroke(AppColors.secondary.opacity(0.15), lineWidth: 0.75)
+                            )
+                            .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
 
                         Button(action: presentShareCard) {
                             HStack(spacing: 6) {
-                                Image(systemName: "square.and.arrow.up")
-                                    .font(.system(size: 13, weight: .medium))
+                                Image(systemName: "square.and.arrow.up.fill")
+                                    .font(.system(size: 13, weight: .semibold))
                                 Text("Share")
-                                    .font(AppTypography.bodySmall)
+                                    .font(AppTypography.bodySmall.weight(.semibold))
                             }
-                            .foregroundColor(categoryAccent.opacity(0.75))
+                            .foregroundColor(categoryAccent)
+                            .padding(.horizontal, AppSpacing.md)
+                            .padding(.vertical, AppSpacing.xs + 2)
+                            .background(categoryAccent.opacity(0.15))
+                            .overlay(
+                                Capsule()
+                                    .stroke(categoryAccent.opacity(0.45), lineWidth: 0.75)
+                            )
+                            .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
                     }

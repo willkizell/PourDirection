@@ -329,6 +329,7 @@ struct MapTabView: View {
             DistancePreferencesView()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(AppColors.background)
         }
         } // GeometryReader
         .ignoresSafeArea()
