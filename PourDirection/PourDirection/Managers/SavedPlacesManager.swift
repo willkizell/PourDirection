@@ -32,16 +32,28 @@ final class SavedPlacesManager {
 
     // MARK: - Mutations
 
-    func toggleSave(_ place: Place, category: PlaceCategory) {
+    /// Set to true by `toggleSave`/`add` when a save was blocked by the free-tier cap.
+    /// Views observe this to present the paywall.
+    var hitSaveLimit: Bool = false
+
+    /// Toggle save state. Returns true if the place was newly saved; false if it was
+    /// removed, already saved, or blocked by the free-tier limit.
+    @MainActor @discardableResult
+    func toggleSave(_ place: Place, category: PlaceCategory) -> Bool {
         if isSaved(place) {
             remove(place)
-        } else {
-            add(place, category: category)
+            return false
         }
+        return add(place, category: category)
     }
 
-    func add(_ place: Place, category: PlaceCategory) {
-        guard !isSaved(place) else { return }   // no duplicates
+    @MainActor @discardableResult
+    func add(_ place: Place, category: PlaceCategory) -> Bool {
+        guard !isSaved(place) else { return false }   // no duplicates
+        guard PremiumGates.canSaveMore(currentCount: savedPlaces.count) else {
+            hitSaveLimit = true
+            return false
+        }
         let saved = SavedPlace(
             id:               place.id,
             name:             place.name,
@@ -54,6 +66,7 @@ final class SavedPlacesManager {
         )
         savedPlaces.append(saved)
         persist()
+        return true
     }
 
     func remove(_ place: Place) {

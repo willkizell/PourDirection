@@ -14,6 +14,14 @@ struct DistancePreferencesView: View {
 
     @Environment(ThemeManager.self) private var themeManager
     @Bindable private var prefs = DistancePreferences.shared
+    @StateObject private var purchaseManager = PurchaseManager.shared
+    @State private var showUpgradeSheet = false
+
+    private var searchAreaCap: Double {
+        purchaseManager.isPremium
+            ? DistancePreferences.searchAreaMaxMeters
+            : PremiumGates.freeSearchAreaMeters
+    }
 
     var body: some View {
         ZStack {
@@ -69,6 +77,24 @@ struct DistancePreferencesView: View {
             if prefs.searchAreaMeters < newWalking {
                 prefs.searchAreaMeters = newWalking
             }
+        }
+        .onChange(of: prefs.searchAreaMeters) { _, newValue in
+            // Clamp search area to premium entitlement
+            if newValue > searchAreaCap {
+                prefs.searchAreaMeters = searchAreaCap
+                showUpgradeSheet = true
+            }
+        }
+        .onAppear {
+            // Retroactively clamp if a previously-premium user downgraded
+            if prefs.searchAreaMeters > searchAreaCap {
+                prefs.searchAreaMeters = searchAreaCap
+            }
+        }
+        .sheet(isPresented: $showUpgradeSheet) {
+            UpgradeToProView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -131,10 +157,36 @@ struct DistancePreferencesView: View {
 
             SliderWithDefaultTick(
                 value: $prefs.searchAreaMeters,
-                range: prefs.walkingDistanceMeters...DistancePreferences.searchAreaMaxMeters,
-                defaultValue: DistancePreferences.defaultSearchAreaMeters
+                range: prefs.walkingDistanceMeters...max(prefs.walkingDistanceMeters + 1, searchAreaCap),
+                defaultValue: min(DistancePreferences.defaultSearchAreaMeters, searchAreaCap)
             )
             .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+
+            if !purchaseManager.isPremium {
+                Button(action: {
+                    HapticManager.shared.light()
+                    showUpgradeSheet = true
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Unlock up to \(DistancePreferences.formatMetersAsDistance(DistancePreferences.searchAreaMaxMeters)) with Pro")
+                            .font(AppTypography.caption)
+                    }
+                    .foregroundColor(AppColors.primary)
+                    .padding(.horizontal, AppSpacing.md)
+                    .padding(.vertical, AppSpacing.xs)
+                    .background(AppColors.primary.opacity(0.10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppRadius.md)
+                            .stroke(AppColors.primary.opacity(0.3), lineWidth: 0.75)
+                    )
+                    .cornerRadius(AppRadius.md)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, AppSpacing.xs)
+                .padding(.horizontal, AppSpacing.screenHorizontalPadding)
+            }
         }
     }
 }

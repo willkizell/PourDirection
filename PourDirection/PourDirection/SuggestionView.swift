@@ -121,6 +121,7 @@ struct SuggestionView: View {
     @State private var isReversing:      Bool    = false  // controls card transition direction
     @State private var dragOffset:       CGFloat = 0      // horizontal drag for snap feel
     @State private var showDistanceSheet: Bool   = false
+    @State private var showUpgradeSheet:  Bool   = false
     @State private var distanceSnapshotWalking: Double = 0
     @State private var distanceSnapshotSearch:  Double = 0
     private let savedManager  = SavedPlacesManager.shared
@@ -293,6 +294,11 @@ struct SuggestionView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showUpgradeSheet) {
+            UpgradeToProView()
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Place Card
@@ -324,6 +330,10 @@ struct SuggestionView: View {
                         HapticManager.shared.light()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
                             savedManager.toggleSave(place, category: category)
+                        }
+                        if savedManager.hitSaveLimit {
+                            savedManager.hitSaveLimit = false
+                            showUpgradeSheet = true
                         }
                     }) {
                         Image(systemName: savedManager.isSaved(place) ? "heart.fill" : "heart")
