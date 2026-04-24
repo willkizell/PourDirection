@@ -36,11 +36,27 @@ final class NotificationManager: NSObject {
     private let fridayMidnightID  = "com.pourdirection.notify.friday.midnight"
     private let saturdayMidnightID = "com.pourdirection.notify.saturday.midnight"
     private let newCityID         = "com.pourdirection.notify.newcity"
+    private let goHomeID          = "com.pourdirection.notify.saturday.gohome"
+    private let firstDayHomeID    = "com.pourdirection.notify.firstday.sethome"
 
     // MARK: - UserDefaults Keys (new-city detection)
 
     private let lastCityKey        = "com.pourdirection.lastKnownCity"
     private let lastCityArrivalKey = "com.pourdirection.lastCityArrivalDate"
+    private let firstLaunchDateKey = "com.pourdirection.firstLaunchDate"
+
+    // MARK: - Notification Route Metadata
+
+    private let routeKey            = "com.pourdirection.notification.route"
+    private let routeOpenSavedSetup = "open_saved_setup"
+    private let routeOpenHome       = "open_home_compass"
+
+    // MARK: - Home-Context Rules
+
+    /// User is considered "away from home" when farther than this distance.
+    private let awayFromHomeThresholdMeters: CLLocationDistance = 500
+    private let firstDayWindowSeconds: TimeInterval = 24 * 60 * 60
+    private let firstDayReminderOffsetSeconds: TimeInterval = 20 * 60 * 60
 
     /// Minimum time (seconds) the user must be in the new city before we notify.
     /// 45 minutes filters out quick drive-throughs.
@@ -67,10 +83,16 @@ final class NotificationManager: NSObject {
             case .notDetermined:
                 center.requestAuthorization(options: [.alert, .badge, .sound]) { granted, _ in
                     guard granted else { return }
-                    DispatchQueue.main.async { self.scheduleWeeklyNotifications() }
+                    DispatchQueue.main.async {
+                        self.scheduleWeeklyNotifications()
+                        self.scheduleFirstDayHomeReminderIfNeeded()
+                    }
                 }
             case .authorized, .provisional:
-                DispatchQueue.main.async { self.scheduleWeeklyNotifications() }
+                DispatchQueue.main.async {
+                    self.scheduleWeeklyNotifications()
+                    self.scheduleFirstDayHomeReminderIfNeeded()
+                }
             default:
                 break
             }
@@ -142,11 +164,36 @@ final class NotificationManager: NSObject {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
 
+    /// Persist the app's first launch date once, then reuse for first-day reminders.
+    func recordFirstLaunchIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: firstLaunchDateKey) == nil else { return }
+        defaults.set(Date(), forKey: firstLaunchDateKey)
+    }
+
+    /// Refresh home-context notifications (first-day setup + go-home reminder).
+    /// Safe to call repeatedly from location updates and app foregrounding.
+    func refreshHomeContextNotifications(currentLocation: CLLocation?) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { [weak self] settings in
+            guard let self,
+                  settings.authorizationStatus == .authorized ||
+                  settings.authorizationStatus == .provisional else { return }
+            DispatchQueue.main.async {
+                self.scheduleFirstDayHomeReminderIfNeeded()
+                self.syncSaturdayGoHomeNotification(currentLocation: currentLocation)
+            }
+        }
+    }
+
     /// Call this from the significant-location-change delegate (including background launches).
     /// Reverse-geocodes the location, checks if the city changed, and fires a notification
     /// after the user has been in the new city for at least `newCityDwellSeconds`.
     /// Throttled to prevent main-thread blocking from concurrent reverse-geocode requests.
     func handleSignificantLocationChange(_ location: CLLocation) {
+        // Keep home-context reminders in sync when location changes in background.
+        refreshHomeContextNotifications(currentLocation: location)
+
         // Throttle: only reverse-geocode if 60+ seconds have passed since last request
         guard Date().timeIntervalSince(lastGeocodeTime) >= geocodeThrottleInterval else { return }
 
@@ -203,6 +250,58 @@ final class NotificationManager: NSObject {
         }
     }
 
+    private func scheduleFirstDayHomeReminderIfNeeded() {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [firstDayHomeID])
+
+        guard !HomeLocationManager.shared.isSet else { return }
+        guard let firstLaunch = UserDefaults.standard.object(forKey: firstLaunchDateKey) as? Date else { return }
+
+        let now = Date()
+        let elapsed = now.timeIntervalSince(firstLaunch)
+        guard elapsed >= 0, elapsed < firstDayWindowSeconds else { return }
+
+        let reminderDate = firstLaunch.addingTimeInterval(firstDayReminderOffsetSeconds)
+        guard reminderDate > now else { return }
+        let fireDate = reminderDate
+
+        let content = UNMutableNotificationContent()
+        content.title = "PourDirection"
+        content.body = "Set your home location so Pour can help you get back safely."
+        content.sound = .default
+        content.userInfo = [routeKey: routeOpenSavedSetup]
+
+        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+        let request = UNNotificationRequest(identifier: firstDayHomeID, content: content, trigger: trigger)
+        center.add(request)
+    }
+
+    private func syncSaturdayGoHomeNotification(currentLocation: CLLocation?) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [goHomeID])
+
+        guard HomeLocationManager.shared.isSet,
+              let currentLocation,
+              let distance = HomeLocationManager.shared.distance(from: currentLocation),
+              distance > awayFromHomeThresholdMeters else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "PourDirection"
+        content.body = "Time to go home?"
+        content.sound = .default
+        content.userInfo = [routeKey: routeOpenHome]
+
+        var components = DateComponents()
+        components.weekday = 7 // Saturday
+        components.hour = 12
+        components.minute = 45
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        let request = UNNotificationRequest(identifier: goHomeID, content: content, trigger: trigger)
+        center.add(request)
+    }
+
     private func makeRequest(
         id:      String,
         weekday: Int,
@@ -235,5 +334,23 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if let route = response.notification.request.content.userInfo[routeKey] as? String {
+            switch route {
+            case routeOpenSavedSetup:
+                NotificationRoutingManager.shared.setPending(.openSavedForHomeSetup)
+            case routeOpenHome:
+                NotificationRoutingManager.shared.setPending(.openHomeCompass)
+            default:
+                break
+            }
+        }
+        completionHandler()
     }
 }

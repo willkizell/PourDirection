@@ -54,6 +54,7 @@ final class HomeLocationManager {
         self.longitude        = longitude
         self.formattedAddress = address
         persist()
+        NotificationManager.shared.refreshHomeContextNotifications(currentLocation: nil)
     }
 
     func clear() {
@@ -63,6 +64,7 @@ final class HomeLocationManager {
         UserDefaults.standard.removeObject(forKey: keyLat)
         UserDefaults.standard.removeObject(forKey: keyLng)
         UserDefaults.standard.removeObject(forKey: keyAddress)
+        NotificationManager.shared.refreshHomeContextNotifications(currentLocation: nil)
     }
 
     /// Distance from home to a given location, or nil if home isn't set or location is unavailable.

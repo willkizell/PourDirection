@@ -26,6 +26,7 @@ struct RootContainerView: View {
 
     @Environment(LocationManager.self) private var locationManager
     @Environment(ThemeManager.self)   private var themeManager
+    private let notificationRouting = NotificationRoutingManager.shared
 
     // ── Navigation & Flow State ───────────────────────────────────────────────
     @State private var selectedTab: AppTab          = .explore
@@ -38,6 +39,7 @@ struct RootContainerView: View {
     @State private var hasPrewarmed: Bool           = false
     /// Increments on every tab switch or screen push — forces ad banner to reload.
     @State private var adReloadTrigger: Int         = 0
+    @State private var savedHomeSetupTrigger: Int   = 0
 
     private var shouldHideAdBanner: Bool {
         if selectedTab == .map { return true }
@@ -118,10 +120,14 @@ struct RootContainerView: View {
             // Start location as early as possible so it's ready when views appear
             locationManager.requestPermission()
             locationManager.startUpdating()
+            NotificationManager.shared.refreshHomeContextNotifications(currentLocation: locationManager.currentLocation)
+            handlePendingNotificationActionIfNeeded()
         }
         // Once location arrives for the first time, pre-warm the cache for all
         // categories so the first tap on any suggestion view is near-instant.
         .onChange(of: locationManager.currentLocation) { _, loc in
+            NotificationManager.shared.refreshHomeContextNotifications(currentLocation: loc)
+
             guard let loc, !hasPrewarmed else { return }
             hasPrewarmed = true
             let lat  = loc.coordinate.latitude
@@ -157,6 +163,9 @@ struct RootContainerView: View {
                 _ = try? await dessert
             }
         }
+        .onChange(of: notificationRouting.pendingAction) { _, _ in
+            handlePendingNotificationActionIfNeeded()
+        }
         .preferredColorScheme(themeManager.preferredColorScheme)
     }
 
@@ -174,6 +183,7 @@ struct RootContainerView: View {
                 onLetsGo: { place in
                     compassPresentation = place
                 },
+                forceHomeSetupTrigger: savedHomeSetupTrigger,
                 onSetHome: {
                     // Switch to Settings and open the home sheet
                     selectedTab = .profile
@@ -273,6 +283,29 @@ struct RootContainerView: View {
             }
         } else {
             navigationPath.append(AppRoute.suggestionsMixed)
+        }
+    }
+
+    private func handlePendingNotificationActionIfNeeded() {
+        guard let action = notificationRouting.pendingAction else { return }
+        notificationRouting.clearPending()
+
+        navigationPath = NavigationPath()
+
+        switch action {
+        case .openSavedForHomeSetup:
+            selectedTab = .saved
+            compassPresentation = nil
+            savedHomeSetupTrigger += 1
+        case .openHomeCompass:
+            selectedTab = .saved
+            if let home = HomeLocationManager.shared.homePlace {
+                DispatchQueue.main.async {
+                    compassPresentation = home
+                }
+            } else {
+                savedHomeSetupTrigger += 1
+            }
         }
     }
 }

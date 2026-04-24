@@ -14,6 +14,7 @@ import CoreLocation
 struct SavedView: View {
 
     let onLetsGo: (Place) -> Void
+    var forceHomeSetupTrigger: Int = 0
     var onSetHome: (() -> Void)? = nil
 
     @Environment(LocationManager.self) private var locationManager
@@ -138,6 +139,9 @@ struct SavedView: View {
                     distanceCache[saved.id] = saved.distance(from: newLocation)
                 }
             }
+        }
+        .onChange(of: forceHomeSetupTrigger) { _, _ in
+            showHomeSheet = true
         }
     }
 

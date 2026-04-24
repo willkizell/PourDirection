@@ -56,6 +56,8 @@ struct PourDirectionApp: App {
                 }
             }
             .onAppear {
+                NotificationManager.shared.recordFirstLaunchIfNeeded()
+
                 // Single cross-dissolve: splash fades out while main fades in
                 // simultaneously, so combined opacity stays near 1.0 throughout.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.7) {
@@ -126,6 +128,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // Assign UNUserNotificationCenter delegate as early as possible.
+        _ = NotificationManager.shared
+
         if launchOptions?[.location] != nil {
             // App was woken by a significant location change.
             // Create a temporary location manager to get the latest location and process it.
