@@ -406,33 +406,15 @@ struct MapTabView: View {
             if let p = try? await nearbyDessert { addUnique(p, category: .dessert) }
             if let p = try? await wideDayDrinks { addUnique(p, category: .dayDrinks) }
         } else {
-            // Night mode: fetch bars, restaurants, clubs, dispensaries, liquor stores, casinos.
-            // Two-pass fetch: walking radius (nearby) + search area (wide).
-            async let nearbyBars        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walkRadius)
-            async let nearbyRestaurants = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: walkRadius)
-            async let nearbyDispos      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: walkRadius)
-            async let nearbyLiquor      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: walkRadius)
-            async let wideBars          = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: searchRadius)
-            async let wideRestaurants   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: searchRadius)
-            async let wideClubs         = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",   radius: searchRadius)
-            async let wideDispos        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: searchRadius)
-            async let wideLiquor        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: searchRadius)
-            async let wideCasino        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "casino",       radius: searchRadius)
+            // Night mode: single wide fetch per category, sorted closest-first client-side.
+            async let wideBars        = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: searchRadius)
+            async let wideRestaurants = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: searchRadius)
+            async let wideClubs       = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",   radius: searchRadius)
+            async let wideDispos      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: searchRadius)
+            async let wideLiquor      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: searchRadius)
+            async let wideCasino      = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "casino",       radius: searchRadius)
 
-            // Nearby results first — they take priority
-            if let bars = try? await nearbyBars           { addUnique(bars, category: .bar) }
-            if let restaurants = try? await nearbyRestaurants { addUnique(restaurants, category: .restaurant) }
-            if let dispos = try? await nearbyDispos {
-                let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
-                addUnique(filtered, category: .dispensary)
-            }
-            if let liquor = try? await nearbyLiquor {
-                let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= walkRadius }
-                addUnique(filtered, category: .liquorStore)
-            }
-
-            // Wide results — fill in farther venues
-            if let bars = try? await wideBars             { addUnique(bars, category: .bar) }
+            if let bars = try? await wideBars         { addUnique(bars, category: .bar) }
             if let restaurants = try? await wideRestaurants { addUnique(restaurants, category: .restaurant) }
             if let clubs = try? await wideClubs {
                 let filtered = clubs.filter {
@@ -441,15 +423,9 @@ struct MapTabView: View {
                 }
                 addUnique(filtered, category: .club)
             }
-            if let dispos = try? await wideDispos {
-                let filtered = dispos.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
-                addUnique(filtered, category: .dispensary)
-            }
-            if let liquor = try? await wideLiquor {
-                let filtered = liquor.filter { ($0.distance(from: loc) ?? .greatestFiniteMagnitude) <= searchRadius }
-                addUnique(filtered, category: .liquorStore)
-            }
-            if let casinos = try? await wideCasino { addUnique(casinos, category: .casino) }
+            if let dispos = try? await wideDispos     { addUnique(dispos, category: .dispensary) }
+            if let liquor = try? await wideLiquor     { addUnique(liquor, category: .liquorStore) }
+            if let casinos = try? await wideCasino    { addUnique(casinos, category: .casino) }
         }
 
         // Final filter to search area

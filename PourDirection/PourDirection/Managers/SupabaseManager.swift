@@ -25,7 +25,7 @@ private actor PlacesCache {
     }
 
     private var store: [String: Entry] = [:]
-    private let ttl: TimeInterval = 300   // 5 minutes
+    private let ttl: TimeInterval = 1200  // 20 minutes
 
     func get(key: String) -> [Place]? {
         guard let entry = store[key], Date() < entry.expiry else {
