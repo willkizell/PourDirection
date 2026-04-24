@@ -43,6 +43,9 @@ struct CompassActiveView: View {
     // ── Closed Alert ─────────────────────────────────────────────────────────
     @State private var showClosedAlert: Bool = false
 
+    // ── Share Sheet ─────────────────────────────────────────────────────────
+    @State private var shareItems: [Any]? = nil
+
     // MARK: - Computed Navigation State
 
     /// Bearing from current location to destination (0–360, clockwise from north).
@@ -224,12 +227,25 @@ struct CompassActiveView: View {
 
                 // ── Actions ─────────────────────────────────────────────────
                 VStack(spacing: AppSpacing.sm) {
-                    Button(action: onOpenInMaps) {
-                        Text("Open in Maps")
-                            .font(AppTypography.bodySmall)
-                            .foregroundColor(AppColors.secondary.opacity(0.5))
+                    HStack(spacing: AppSpacing.lg) {
+                        Button(action: onOpenInMaps) {
+                            Text("Open in Maps")
+                                .font(AppTypography.bodySmall)
+                                .foregroundColor(AppColors.secondary.opacity(0.5))
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: presentShareCard) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 13, weight: .medium))
+                                Text("Share")
+                                    .font(AppTypography.bodySmall)
+                            }
+                            .foregroundColor(categoryAccent.opacity(0.75))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
 
                     if showRideButton {
                         Button(action: {
@@ -297,6 +313,15 @@ struct CompassActiveView: View {
                 showClosedAlert = true
             }
         }
+        .sheet(isPresented: Binding(
+            get: { shareItems != nil },
+            set: { if !$0 { shareItems = nil } }
+        )) {
+            if let items = shareItems {
+                ShareSheet(items: items)
+                    .presentationDetents([.medium, .large])
+            }
+        }
         .alert("This place is closed!", isPresented: $showClosedAlert) {
             Button("OK", role: .cancel) { }
         } message: {
@@ -349,6 +374,16 @@ struct CompassActiveView: View {
                 HapticManager.shared.veer(intensity: Float(intensity))
             }
         }
+    }
+
+    // MARK: - Share
+
+    private func presentShareCard() {
+        HapticManager.shared.light()
+        let category = place.inferredCategory
+        guard let image = ShareCardRenderer.render(place: place, category: category) else { return }
+        let caption = "Tonight's Pour Direction → \(place.name). Find yours: https://apps.apple.com/app/pourdirection"
+        shareItems = [image, caption]
     }
 
     // MARK: - Ride Button
