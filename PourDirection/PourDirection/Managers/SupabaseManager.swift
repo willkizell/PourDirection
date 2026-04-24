@@ -14,29 +14,69 @@ import Supabase
 
 // MARK: - Places Cache
 
-/// Thread-safe in-memory cache for nearby places results.
+/// Thread-safe two-tier cache for nearby places results:
+///  - In-memory layer for instant hits within a session
+///  - Disk layer (JSON file) for persistence across app launches
+///
 /// Keys are rounded to a ~1 km grid so nearby movement reuses results.
-/// Entries expire after `ttl` seconds (default 5 minutes).
+/// Entries expire after `ttl` seconds (24 hours). Stale entries are
+/// purged lazily on read.
 private actor PlacesCache {
 
-    private struct Entry {
+    private struct Entry: Codable {
         let places: [Place]
         let expiry: Date
     }
 
     private var store: [String: Entry] = [:]
-    private let ttl: TimeInterval = 1200  // 20 minutes
+    private let ttl: TimeInterval = 60 * 60 * 24   // 24 hours
+
+    private let fileURL: URL = {
+        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        return dir.appendingPathComponent("pourdirection-places-cache.json")
+    }()
+
+    private var didLoadFromDisk = false
+
+    // MARK: - Read
 
     func get(key: String) -> [Place]? {
+        loadFromDiskIfNeeded()
         guard let entry = store[key], Date() < entry.expiry else {
-            store.removeValue(forKey: key)
+            if store[key] != nil {
+                store.removeValue(forKey: key)
+                persistToDisk()
+            }
             return nil
         }
         return entry.places
     }
 
+    // MARK: - Write
+
     func set(key: String, places: [Place]) {
+        loadFromDiskIfNeeded()
         store[key] = Entry(places: places, expiry: Date().addingTimeInterval(ttl))
+        persistToDisk()
+    }
+
+    // MARK: - Disk
+
+    private func loadFromDiskIfNeeded() {
+        guard !didLoadFromDisk else { return }
+        didLoadFromDisk = true
+
+        guard let data = try? Data(contentsOf: fileURL),
+              let decoded = try? JSONDecoder().decode([String: Entry].self, from: data)
+        else { return }
+
+        let now = Date()
+        store = decoded.filter { $0.value.expiry > now }
+    }
+
+    private func persistToDisk() {
+        guard let data = try? JSONEncoder().encode(store) else { return }
+        try? data.write(to: fileURL, options: .atomic)
     }
 }
 
