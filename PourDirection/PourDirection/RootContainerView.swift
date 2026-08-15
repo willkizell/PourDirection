@@ -116,26 +116,18 @@ struct RootContainerView: View {
             locationManager.requestPermission()
             locationManager.startUpdating()
         }
-        // Once location arrives for the first time, pre-warm the cache for all
-        // categories so the first tap on any suggestion view is near-instant.
+        // Once location arrives for the first time, pre-warm only the bar cache —
+        // the hero flow. Prewarming all five categories billed five Places
+        // searches per launch even when the user never opened those screens;
+        // other categories load on demand (fast, thanks to the server-side cache).
         .onChange(of: locationManager.currentLocation) { _, loc in
             guard let loc, !hasPrewarmed else { return }
             hasPrewarmed = true
             let lat  = loc.coordinate.latitude
             let lng  = loc.coordinate.longitude
             let walk = DistancePreferences.shared.walkingDistanceMeters
-            let wide = DistancePreferences.shared.searchAreaMeters
             Task {
-                async let bars    = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar",          radius: walk)
-                async let rests   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "restaurant",   radius: walk)
-                async let dispos  = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "dispensary",   radius: walk)
-                async let liquor  = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "liquor_store", radius: walk)
-                async let clubs   = SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "night_club",   radius: wide)
-                _ = try? await bars
-                _ = try? await rests
-                _ = try? await dispos
-                _ = try? await liquor
-                _ = try? await clubs
+                _ = try? await SupabaseManager.shared.fetchNearbyPlaces(lat: lat, lng: lng, type: "bar", radius: walk)
             }
         }
         .preferredColorScheme(.dark)

@@ -9,12 +9,22 @@
 //
 
 import SwiftUI
+import StoreKit
 
 struct UpgradeToProView: View {
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var purchaseManager = PurchaseManager.shared
     @State private var isPurchasing = false
+    @State private var showPurchaseError = false
+
+    /// Live App Store price, falling back to the expected price while loading.
+    private var priceText: String {
+        if let product = purchaseManager.proProduct {
+            return "\(product.displayPrice) per year"
+        }
+        return "$9.99 per year"
+    }
 
     var body: some View {
         ZStack {
@@ -59,7 +69,7 @@ struct UpgradeToProView: View {
                         .foregroundColor(AppColors.secondary)
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("$9.99 per year")
+                        Text(priceText)
                             .font(AppTypography.header)
                             .foregroundColor(AppColors.secondary)
                         Text("That's less than one drink.")
@@ -78,7 +88,11 @@ struct UpgradeToProView: View {
                     Task {
                         let success = await purchaseManager.purchasePremium()
                         isPurchasing = false
-                        if success { dismiss() }
+                        if success {
+                            dismiss()
+                        } else {
+                            showPurchaseError = true
+                        }
                     }
                 }
                 .opacity(isPurchasing ? 0.6 : 1.0)
@@ -105,6 +119,12 @@ struct UpgradeToProView: View {
                     .padding(.bottom, AppSpacing.xl)
             }
 
+        }
+        .task { await purchaseManager.loadProduct() }
+        .alert("Purchase didn't go through", isPresented: $showPurchaseError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("You weren't charged. Please try again.")
         }
         .preferredColorScheme(.dark)
     }

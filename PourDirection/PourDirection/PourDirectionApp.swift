@@ -97,9 +97,6 @@ struct PourDirectionApp: App {
                     }
                 }
                 hasLaunchedBefore = true
-                // ── Supabase connection test ─────────────────────────────────
-                // Remove once real Edge Functions are deployed.
-                Task { await SupabaseManager.shared.testConnection() }
             }
         }
     }

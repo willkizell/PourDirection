@@ -25,7 +25,9 @@ private actor PlacesCache {
     }
 
     private var store: [String: Entry] = [:]
-    private let ttl: TimeInterval = 300   // 5 minutes
+    private let ttl: TimeInterval = 900   // 15 minutes — the Edge Function serves
+                                          // open-now computed fresh per request,
+                                          // so longer client caching stays accurate
 
     func get(key: String) -> [Place]? {
         guard let entry = store[key], Date() < entry.expiry else {
