@@ -38,8 +38,8 @@ struct RootContainerView: View {
     @State private var hasPrewarmed: Bool           = false
 
     private var shouldHideAdBanner: Bool {
+        // Map is the highest-dwell screen — the banner earns most there.
         if selectedTab == .profile { return true }
-        if selectedTab == .map { return true }
         if case .editProfile = activeRoute { return true }
         if case .help = activeRoute { return true }
         return false
@@ -96,6 +96,8 @@ struct RootContainerView: View {
                 selectedTab:  $selectedTab,
                 onDismiss: {
                     compassPresentation = nil
+                    // Natural break point — the night's decision is made.
+                    InterstitialAdManager.shared.maybeShowAfterCompassSession()
                 }
             )
         }

@@ -73,6 +73,30 @@ do to finish the job. Work top to bottom; the server-side items help the
 4. In the function logs, confirm `cache=HIT` lines appear after the first
    request in an area.
 
+### Hard cost cap (do this before turning the API back on)
+
+You can make it *impossible* for Google to bill you more than a fixed amount:
+in Google Cloud Console → APIs & Services → **Places API (New) → Quotas**,
+set a **requests-per-day cap** (e.g. 500/day). Worst case bill = cap × ~4¢
+≈ $20/day even if something goes wrong, and in practice the cache keeps you
+far below it. When the quota is hit, the edge function returns empty lists —
+the app degrades gracefully instead of billing you. This plus a billing
+alert means you can safely re-enable the key and stop keeping the app
+"shut off."
+
+### AdMob (the revenue side — one-time setup)
+
+1. In AdMob, create an **Interstitial** ad unit for PourDirection and paste
+   its ID into `productionAdUnitID` in
+   `PourDirection/Managers/InterstitialAdManager.swift` (marked with ⚠️).
+   Until you do, release builds simply show no interstitials — no crash.
+2. The interstitial shows after every 2nd compass session, minimum 3 minutes
+   apart, never for Pro users. Tune `sessionsPerAd` / `minSecondsBetweenAds`
+   in the same file if it feels too aggressive or too shy.
+3. The banner now also shows on the Map tab (previously hidden there) —
+   it's the highest-dwell screen. Check it doesn't cover the recenter
+   button on a small device; if it does, nudge `recenterBottomPadding`.
+
 ### App Store Connect (needed before the IAP earns anything)
 
 5. Create an **auto-renewable subscription**, product ID exactly
@@ -89,15 +113,19 @@ do to finish the job. Work top to bottom; the server-side items help the
    (sandbox Apple ID, buy, kill app, relaunch, confirm ads stay hidden;
    test Restore).
 
-### Revenue ideas after break-even (optional)
+### Later, only if the app grows (optional)
 
-- Show the banner on the Map tab too (currently hidden) — it's the
-  highest-dwell screen.
-- An **interstitial** after ending a compass session (every Nth time,
-  frequency-capped) typically out-earns banners 10–20×. Keep it out of the
-  compass itself.
+- Native ads inside the suggestion card deck (an ad card every ~6 swipes)
+  — real revenue but a day of work; not worth it at current scale.
 - Give PourPro a second benefit (e.g. wider search radius or unlimited
   saved places) so the paywall sells more than ad removal.
+- "Sponsored bars" (selling placement to venues) is a sales job, not a
+  code change — skip it unless you want a side hustle.
+- **Day mode**: purely cosmetic, zero revenue impact, and a full light
+  theme is real work across every screen. For a nightlife app, dark-only
+  is defensible. Skip it unless the day-mode work you mentioned already
+  exists on your Mac — it is NOT in this repo (both branches were
+  identical), so push it from your machine if you want it kept.
 
 ## Expected outcome
 

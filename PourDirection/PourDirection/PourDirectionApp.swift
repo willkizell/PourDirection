@@ -68,7 +68,11 @@ struct PourDirectionApp: App {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) {
                     ATTrackingManager.requestTrackingAuthorization { _ in
                         #if canImport(GoogleMobileAds)
-                        MobileAds.shared.start { _ in }
+                        MobileAds.shared.start { _ in
+                            Task { @MainActor in
+                                InterstitialAdManager.shared.preload()
+                            }
+                        }
                         MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [
                             "1b3dc40f450db15529430fa5a35ef648"
                         ]

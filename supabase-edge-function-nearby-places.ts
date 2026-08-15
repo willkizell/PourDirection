@@ -6,10 +6,11 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 // How long a cached Google result is served before re-fetching.
-// Place lists, ratings and weekly hours barely change day to day; open/closed
+// Place lists, ratings and weekly hours barely change week to week; open/closed
 // status is computed at serve time from the cached weekly schedule, so a long
-// TTL does not make "Open now" stale.
-const CACHE_TTL_HOURS = 24;
+// TTL does not make "Open now" stale. Google permits caching Places data for
+// up to 30 days.
+const CACHE_TTL_HOURS = 72;
 
 interface TypeConfig {
   includedTypes?: string[];
